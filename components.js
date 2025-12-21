@@ -497,8 +497,10 @@ const HistoryView = ({ players, sessions }) => {
 };
 
 // ========================================
-// INSIGHTS VIEW
+// ENHANCED INSIGHTS VIEW - PHASE 1
+// Replace the InsightsView section in your components.js with this code
 // ========================================
+
 const InsightsView = ({ players, sessions, rechartsLoaded }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
 
@@ -512,11 +514,10 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
     return window.analyticsService.getChartData(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
 
-  // Check if Recharts is available
-  const hasRecharts = rechartsLoaded && window.Recharts && window.Recharts.LineChart;
+  const hasRecharts = rechartsLoaded && window.Chart;
 
   return React.createElement('div', { className: 'space-y-6' }, [
-    // Player Selection
+    // Player Selection Card
     React.createElement('div', { className: 'card', key: 'select' }, [
       React.createElement('h2', { className: 'section-header', key: 'header' }, [
         React.createElement(TrendingUp, { key: 'icon' }),
@@ -535,8 +536,9 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
       ])
     ]),
 
-    // Insights Cards
+    // Main Insight Cards with Trends and Benchmarks
     selectedPlayer && insights && React.createElement('div', { className: 'grid-4', key: 'insights' }, [
+      // Card 1: Total Sessions
       React.createElement('div', {
         key: 'sessions',
         className: 'insight-card green',
@@ -546,71 +548,528 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
         React.createElement('p', { className: 'insight-value', key: 'value' }, insights.totalSessions)
       ]),
       
+      // Card 2: Avg Run Time with Trend
       React.createElement('div', {
         key: 'runtime',
         className: 'insight-card blue',
         style: { '--from-color': '#3b82f6', '--to-color': '#2563eb' }
       }, [
         React.createElement('p', { className: 'insight-label', key: 'label' }, 'Avg Run Time'),
-        React.createElement('p', { className: 'insight-value', key: 'value' }, insights.avgRunTime)
+        React.createElement('div', { 
+          style: { display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }, 
+          key: 'content' 
+        }, [
+          React.createElement('p', { 
+            className: 'insight-value', 
+            key: 'value', 
+            style: { fontSize: '2rem' } 
+          }, insights.avgRunTime),
+          insights.runTimeTrend && insights.runTimeTrend.change > 0 && React.createElement('span', {
+            key: 'trend',
+            style: {
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: insights.runTimeTrend.isImproving ? '#86efac' : '#fca5a5'
+            }
+          }, `${insights.runTimeTrend.arrow} ${insights.runTimeTrend.change}%`)
+        ]),
+        React.createElement('p', {
+          key: 'benchmark',
+          style: { 
+            fontSize: '0.75rem', 
+            marginTop: '0.5rem', 
+            opacity: 0.9,
+            fontWeight: '600'
+          }
+        }, `Level: ${insights.runTimeBenchmark.level}`)
       ]),
       
+      // Card 3: Jump Balance with Trend
       React.createElement('div', {
         key: 'balance',
         className: 'insight-card orange',
         style: { '--from-color': '#f59e0b', '--to-color': '#d97706' }
       }, [
         React.createElement('p', { className: 'insight-label', key: 'label' }, 'Jump Balance'),
-        React.createElement('p', { className: 'insight-value', key: 'value' }, insights.jumpBalance)
+        React.createElement('div', { 
+          style: { display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }, 
+          key: 'content' 
+        }, [
+          React.createElement('p', { 
+            className: 'insight-value', 
+            key: 'value', 
+            style: { fontSize: '2rem' } 
+          }, insights.jumpBalance),
+          insights.jumpBalanceTrend && insights.jumpBalanceTrend.change > 0 && React.createElement('span', {
+            key: 'trend',
+            style: {
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: insights.jumpBalanceTrend.isImproving ? '#86efac' : '#fca5a5'
+            }
+          }, `${insights.jumpBalanceTrend.arrow} ${insights.jumpBalanceTrend.change}%`)
+        ]),
+        React.createElement('p', {
+          key: 'benchmark',
+          style: { 
+            fontSize: '0.75rem', 
+            marginTop: '0.5rem', 
+            opacity: 0.9,
+            fontWeight: '600'
+          }
+        }, `Level: ${insights.balanceBenchmark.level}`)
       ]),
       
+      // Card 4: Session Quality Score
       React.createElement('div', {
-        key: 'fatigue',
+        key: 'quality',
         className: 'insight-card purple',
         style: { '--from-color': '#a855f7', '--to-color': '#9333ea' }
       }, [
-        React.createElement('p', { className: 'insight-label', key: 'label' }, 'Fatigue Dropoff'),
-        React.createElement('p', { className: 'insight-value', key: 'value' }, insights.fatigueDropoff)
+        React.createElement('p', { className: 'insight-label', key: 'label' }, 'Avg Session Quality'),
+        React.createElement('p', { 
+          className: 'insight-value', 
+          key: 'value' 
+        }, insights.avgQualityScore + '/100'),
+        React.createElement('p', {
+          key: 'rating',
+          style: { 
+            fontSize: '0.75rem', 
+            marginTop: '0.5rem', 
+            opacity: 0.9,
+            fontWeight: '600'
+          }
+        }, insights.qualityRating)
       ])
     ]),
 
-    // Charts - only show if Recharts is loaded
-    selectedPlayer && chartData.length > 0 && hasRecharts && (() => {
-      const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = window.Recharts;
+    // Personal Bests Section
+    selectedPlayer && insights && insights.personalBests && React.createElement('div', { className: 'card', key: 'personal-bests' }, [
+      React.createElement('h3', { className: 'section-header', key: 'header' }, '🏆 Personal Bests'),
+      React.createElement('div', { 
+        className: 'grid-2', 
+        style: { gap: '1rem' }, 
+        key: 'grid' 
+      }, [
+        // Best Run Time
+        insights.personalBests.bestRunTime && React.createElement('div', {
+          key: 'run',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #3b82f6' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#1e40af', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '🏃 2km Run'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestRunTime.timeStr),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestRunTime.date))
+        ]),
+        
+        // Best Left Jump
+        insights.personalBests.bestLeftJump && React.createElement('div', {
+          key: 'left',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #10b981' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#065f46', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '⬅️ Left Jump'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestLeftJump.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestLeftJump.date))
+        ]),
+        
+        // Best Right Jump
+        insights.personalBests.bestRightJump && React.createElement('div', {
+          key: 'right',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #f59e0b' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#92400e', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '➡️ Right Jump'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestRightJump.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestRightJump.date))
+        ]),
+        
+        // Best Sprint
+        insights.personalBests.bestSprint && React.createElement('div', {
+          key: 'sprint',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #fae8ff 0%, #f3e8ff 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #a855f7' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#6b21a8', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '⚡ Best Sprint Set'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestSprint.value + ' reps'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestSprint.date))
+        ])
+      ])
+    ]),
+
+    // Advanced Fatigue Analysis Section
+    selectedPlayer && insights && insights.fatigueMetrics && React.createElement('div', { className: 'card', key: 'fatigue-analysis' }, [
+      React.createElement('h3', { className: 'section-header', key: 'header' }, '⚡ Fatigue Analysis'),
+      React.createElement('div', { 
+        className: 'grid-2', 
+        style: { gap: '1rem' }, 
+        key: 'grid' 
+      }, [
+        // Fatigue Resistance Card
+        React.createElement('div', {
+          key: 'resistance',
+          style: {
+            background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+            padding: '1.25rem',
+            borderRadius: '0.5rem',
+            border: `2px solid ${insights.fatigueMetrics.classification.color}`
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#374151', 
+              fontWeight: '600', 
+              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            } 
+          }, [
+            React.createElement('span', { key: 'icon' }, '🛡️'),
+            'Fatigue Resistance'
+          ]),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.75rem', 
+              fontWeight: 'bold', 
+              color: insights.fatigueMetrics.classification.color,
+              marginBottom: '0.5rem'
+            } 
+          }, insights.fatigueMetrics.fatigueResistance),
+          React.createElement('p', { 
+            key: 'detail', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#6b7280',
+              display: 'flex',
+              justifyContent: 'space-between',
+              paddingTop: '0.5rem',
+              borderTop: '1px solid #e5e7eb'
+            } 
+          }, [
+            React.createElement('span', { key: 'dropoff' }, `Avg Dropoff: ${insights.fatigueMetrics.avgDropoff}%`),
+            React.createElement('span', { 
+              key: 'badge',
+              style: {
+                background: insights.fatigueMetrics.classification.color,
+                color: 'white',
+                padding: '0.125rem 0.5rem',
+                borderRadius: '0.25rem',
+                fontSize: '0.75rem',
+                fontWeight: '600'
+              }
+            }, insights.fatigueMetrics.classification.level)
+          ])
+        ]),
+        
+        // Sprint Consistency Card
+        React.createElement('div', {
+          key: 'consistency',
+          style: {
+            background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+            padding: '1.25rem',
+            borderRadius: '0.5rem',
+            border: '2px solid #6b7280'
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#374151', 
+              fontWeight: '600', 
+              marginBottom: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            } 
+          }, [
+            React.createElement('span', { key: 'icon' }, '🎯'),
+            'Sprint Consistency'
+          ]),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.75rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937',
+              marginBottom: '0.5rem'
+            } 
+          }, `${insights.fatigueMetrics.avgConsistency}%`),
+          React.createElement('p', { 
+            key: 'detail', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#6b7280',
+              display: 'flex',
+              justifyContent: 'space-between',
+              paddingTop: '0.5rem',
+              borderTop: '1px solid #e5e7eb'
+            } 
+          }, [
+            React.createElement('span', { key: 'peak' }, `Peak at Set ${insights.fatigueMetrics.peakTiming}`),
+            React.createElement('span', { 
+              key: 'icon',
+              style: { fontSize: '1.25rem' }
+            }, insights.fatigueMetrics.avgConsistency >= 90 ? '🌟' : 
+               insights.fatigueMetrics.avgConsistency >= 85 ? '✨' : '💫')
+          ])
+        ])
+      ]),
       
+      // Recommendation Box
+      React.createElement('div', {
+        key: 'recommendation',
+        style: {
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '2px solid #fbbf24',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginTop: '1rem'
+        }
+      }, [
+        React.createElement('p', { 
+          key: 'label', 
+          style: { 
+            fontSize: '0.875rem', 
+            fontWeight: '600', 
+            color: '#92400e', 
+            marginBottom: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          } 
+        }, [
+          React.createElement('span', { key: 'icon' }, '💡'),
+          'Training Recommendation'
+        ]),
+        React.createElement('p', { 
+          key: 'text', 
+          style: { 
+            fontSize: '0.875rem', 
+            color: '#78350f',
+            lineHeight: '1.5'
+          } 
+        }, insights.fatigueMetrics.recommendation)
+      ])
+    ]),
+
+    // Performance Trend Charts
+    selectedPlayer && chartData.length > 0 && hasRecharts && (() => {
       return React.createElement('div', { className: 'card', key: 'charts' }, [
-        React.createElement('h3', { className: 'section-header', key: 'header' }, 'Performance Trends'),
+        React.createElement('h3', { className: 'section-header', key: 'header' }, '📈 Performance Trends'),
         
         // Sprint Performance Chart
         React.createElement('div', { style: { marginBottom: '2rem' }, key: 'sprint-chart' }, [
           React.createElement('h4', {
             key: 'title',
-            style: { fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }
-          }, 'Sprint Performance (First vs Last Set)'),
-          React.createElement(ResponsiveContainer, { width: '100%', height: 300, key: 'container' },
-            React.createElement(LineChart, { data: chartData }, [
-              React.createElement(CartesianGrid, { strokeDasharray: '3 3', key: 'grid' }),
-              React.createElement(XAxis, { dataKey: 'date', key: 'xaxis' }),
-              React.createElement(YAxis, { key: 'yaxis' }),
-              React.createElement(Tooltip, { key: 'tooltip' }),
-              React.createElement(Legend, { key: 'legend' }),
-              React.createElement(Line, {
-                key: 'sprint1',
-                type: 'monotone',
-                dataKey: 'sprint1',
-                stroke: '#3b82f6',
-                strokeWidth: 2,
-                name: 'First Sprint'
-              }),
-              React.createElement(Line, {
-                key: 'sprint6',
-                type: 'monotone',
-                dataKey: 'sprint6',
-                stroke: '#ef4444',
-                strokeWidth: 2,
-                name: 'Last Sprint'
-              })
-            ])
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '⚡'),
+            'Sprint Performance (First vs Last Set)'
+          ]),
+          React.createElement('div', { 
+            key: 'canvas-container',
+            style: { position: 'relative', height: '300px' }
+          }, 
+            React.createElement('canvas', { 
+              key: 'canvas',
+              ref: (canvas) => {
+                if (canvas && chartData.length > 0) {
+                  // Destroy existing chart if any
+                  if (canvas.chartInstance) {
+                    canvas.chartInstance.destroy();
+                  }
+                  
+                  // Create new chart
+                  const ctx = canvas.getContext('2d');
+                  canvas.chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                      labels: chartData.map(d => d.date),
+                      datasets: [
+                        {
+                          label: 'First Sprint',
+                          data: chartData.map(d => d.sprint1),
+                          borderColor: '#3b82f6',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
+                        },
+                        {
+                          label: 'Last Sprint',
+                          data: chartData.map(d => d.sprint6),
+                          borderColor: '#ef4444',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
+                        }
+                      ]
+                    },
+                    options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: true,
+                          position: 'top'
+                        },
+                        tooltip: {
+                          mode: 'index',
+                          intersect: false
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Reps'
+                          }
+                        },
+                        x: {
+                          title: {
+                            display: true,
+                            text: 'Date'
+                          }
+                        }
+                      }
+                    }
+                  });
+                }
+              }
+            })
           )
         ]),
         
@@ -618,46 +1077,129 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
         React.createElement('div', { key: 'jump-chart' }, [
           React.createElement('h4', {
             key: 'title',
-            style: { fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: '#374151' }
-          }, 'Broad Jump Performance (Single Leg)'),
-          React.createElement(ResponsiveContainer, { width: '100%', height: 300, key: 'container' },
-            React.createElement(LineChart, { data: chartData }, [
-              React.createElement(CartesianGrid, { strokeDasharray: '3 3', key: 'grid' }),
-              React.createElement(XAxis, { dataKey: 'date', key: 'xaxis' }),
-              React.createElement(YAxis, { key: 'yaxis' }),
-              React.createElement(Tooltip, { key: 'tooltip' }),
-              React.createElement(Legend, { key: 'legend' }),
-              React.createElement(Line, {
-                key: 'left',
-                type: 'monotone',
-                dataKey: 'leftJump',
-                stroke: '#10b981',
-                strokeWidth: 2,
-                name: 'Left Leg'
-              }),
-              React.createElement(Line, {
-                key: 'right',
-                type: 'monotone',
-                dataKey: 'rightJump',
-                stroke: '#f59e0b',
-                strokeWidth: 2,
-                name: 'Right Leg'
-              })
-            ])
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '🦘'),
+            'Broad Jump Performance (Single Leg)'
+          ]),
+          React.createElement('div', { 
+            key: 'canvas-container',
+            style: { position: 'relative', height: '300px' }
+          }, 
+            React.createElement('canvas', { 
+              key: 'canvas',
+              ref: (canvas) => {
+                if (canvas && chartData.length > 0) {
+                  // Destroy existing chart if any
+                  if (canvas.chartInstance) {
+                    canvas.chartInstance.destroy();
+                  }
+                  
+                  // Create new chart
+                  const ctx = canvas.getContext('2d');
+                  canvas.chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                      labels: chartData.map(d => d.date),
+                      datasets: [
+                        {
+                          label: 'Left Leg',
+                          data: chartData.map(d => d.leftJump),
+                          borderColor: '#10b981',
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
+                        },
+                        {
+                          label: 'Right Leg',
+                          data: chartData.map(d => d.rightJump),
+                          borderColor: '#f59e0b',
+                          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                          borderWidth: 2,
+                          tension: 0.4,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
+                        }
+                      ]
+                    },
+                    options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: true,
+                          position: 'top'
+                        },
+                        tooltip: {
+                          mode: 'index',
+                          intersect: false
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Distance (cm)'
+                          }
+                        },
+                        x: {
+                          title: {
+                            display: true,
+                            text: 'Date'
+                          }
+                        }
+                      }
+                    }
+                  });
+                }
+              }
+            })
           )
         ])
       ]);
     })(),
 
-    // Show message if charts aren't available
+    // Fallback if charts aren't loading
     selectedPlayer && chartData.length > 0 && !hasRecharts && React.createElement('div', { className: 'card', key: 'no-charts' },
       React.createElement('p', { 
         className: 'text-center py-8 text-gray-500',
         style: { fontStyle: 'italic' }
       }, '📊 Charts are loading... If they don\'t appear, please refresh the page.')
+    ),
+
+    // Empty state when no player selected
+    !selectedPlayer && React.createElement('div', { className: 'card', key: 'empty' },
+      React.createElement('div', { 
+        style: { 
+          textAlign: 'center', 
+          padding: '3rem 1rem',
+          color: '#6b7280'
+        } 
+      }, [
+        React.createElement('p', { 
+          key: 'icon',
+          style: { fontSize: '4rem', marginBottom: '1rem', opacity: 0.5 }
+        }, '📊'),
+        React.createElement('p', { 
+          key: 'text',
+          style: { fontSize: '1.125rem', fontWeight: '500' }
+        }, 'Select a player above to view their performance insights')
+      ])
     )
   ]);
 };
+
 
 // ========================================
 // RECORD VIEW

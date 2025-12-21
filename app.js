@@ -21,37 +21,35 @@ const AthleteTracker = () => {
     // Load data
     loadData();
     
-    // Check for Recharts with detailed logging
-    const checkRecharts = () => {
-      console.log('Checking for Recharts...', {
-        windowRecharts: !!window.Recharts,
-        hasLineChart: window.Recharts ? !!window.Recharts.LineChart : false
+    // Check for Chart.js with detailed logging
+    const checkChartJS = () => {
+      console.log('Checking for Chart.js...', {
+        windowChart: !!window.Chart
       });
       
-      if (window.Recharts && window.Recharts.LineChart) {
-        console.log('✅ Recharts detected and ready');
-        setRechartsLoaded(true);
+      if (window.Chart) {
+        console.log('✅ Chart.js detected and ready');
+        setRechartsLoaded(true); // Keep the same state name for compatibility
         return true;
       }
       return false;
     };
     
     // Try immediately
-    if (!checkRecharts()) {
-      // If not loaded yet, poll for it with longer timeout
+    if (!checkChartJS()) {
+      // If not loaded yet, poll for it
       let attempts = 0;
-      const maxAttempts = 100; // 10 seconds
+      const maxAttempts = 50; // 5 seconds
       
       const interval = setInterval(() => {
-        console.log(`Recharts check attempt ${attempts + 1}/${maxAttempts}`);
+        console.log(`Chart.js check attempt ${attempts + 1}/${maxAttempts}`);
         
-        if (checkRecharts()) {
+        if (checkChartJS()) {
           clearInterval(interval);
-          console.log('✅ Recharts loaded successfully');
+          console.log('✅ Chart.js loaded successfully');
         } else if (attempts++ >= maxAttempts) {
           clearInterval(interval);
-          console.error('❌ Recharts failed to load after 10 seconds');
-          console.error('Available on window:', Object.keys(window).filter(k => k.toLowerCase().includes('chart') || k.toLowerCase().includes('prop')));
+          console.error('❌ Chart.js failed to load after 5 seconds');
           // Set it to true anyway so users can at least see the rest of the page
           setRechartsLoaded(true);
         }
@@ -59,6 +57,7 @@ const AthleteTracker = () => {
       
       return () => clearInterval(interval);
     }
+ 
   }, []);
   const loadData = async () => {
     console.time('Data Load');
