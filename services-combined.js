@@ -160,31 +160,34 @@
 
     // Track personal bests
     getPersonalBests: function(sessions) {
-      if (sessions.length === 0) return null;
+  if (sessions.length === 0) return null;
 
-      const validRunTimes = sessions
-        .filter(s => s.runTime && s.runTime.includes(':'))
-        .map(s => ({ time: parseRunTime(s.runTime), timeStr: s.runTime, date: s.date }))
-        .filter(s => s.time !== null)
-        .sort((a, b) => a.time - b.time);
+  const validRunTimes = sessions
+    .filter(s => s.runTime && s.runTime.includes(':'))
+    .map(s => ({ time: parseRunTime(s.runTime), timeStr: s.runTime, date: s.date }))
+    .filter(s => s.time !== null)
+    .sort((a, b) => a.time - b.time);
 
-      const getBest = (field) => sessions
-        .filter(s => s.broadJumps[field] > 0)
-        .map(s => ({ value: s.broadJumps[field], date: s.date }))
-        .sort((a, b) => b.value - a.value)[0];
+  const getBest = (field) => sessions
+    .filter(s => s.broadJumps[field] > 0)
+    .map(s => ({ value: s.broadJumps[field], date: s.date }))
+    .sort((a, b) => b.value - a.value)[0];
 
-      const allSprints = sessions
-        .flatMap(s => s.sprints.filter(sp => sp > 0).map(sp => ({ value: sp, date: s.date })))
-        .sort((a, b) => b.value - a.value);
+  const allSprints = sessions
+    .flatMap(s => s.sprints.filter(sp => sp > 0).map(sp => ({ value: sp, date: s.date })))
+    .sort((a, b) => b.value - a.value);
 
-      return {
-        bestRunTime: validRunTimes[0] || null,
-        bestLeftJump: getBest('leftSingle'),
-        bestRightJump: getBest('rightSingle'),
-        bestDoubleJump: getBest('doubleSingle'),
-        bestSprint: allSprints[0] || null
-      };
-    },
+  return {
+  bestRunTime: validRunTimes[0] || null,
+  bestLeftJump: getBest('leftSingle'),
+  bestRightJump: getBest('rightSingle'),
+  bestDoubleJump: getBest('doubleSingle'),
+  bestLeftTriple: getBest('leftTriple'),      // ADD THIS
+  bestRightTriple: getBest('rightTriple'),    // ADD THIS
+  bestDoubleTriple: getBest('doubleTriple'),  // ADD THIS
+  bestSprint: allSprints[0] || null
+};
+},
 
     // Calculate performance trends
     calculateTrend: function(recent, all, metric) {
@@ -460,13 +463,17 @@
       return this.getPlayerSessions(sessions, playerId)
         .slice(0, 10)
         .reverse()
-        .map(s => ({
-          date: formatDate(s.date),
-          sprint1: s.sprints[0] || 0,
-          sprint6: s.sprints[5] || 0,
-          leftJump: s.broadJumps.leftSingle,
-          rightJump: s.broadJumps.rightSingle
-        }));
+        .map(s => {
+          const runTimeSeconds = s.runTime && s.runTime.includes(':') ? parseRunTime(s.runTime) : null;
+          return {
+            date: formatDate(s.date),
+      runTime: s.runTime && s.runTime.includes(':') ? parseRunTime(s.runTime) : null,  // ADDED
+      sprint1: s.sprints[0] || 0,
+      sprint6: s.sprints[5] || 0,
+      leftJump: s.broadJumps.leftSingle,
+      rightJump: s.broadJumps.rightSingle
+          };
+        });
     }
   };
 

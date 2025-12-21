@@ -55,7 +55,7 @@ const Navigation = ({ view, setView }) => {
     React.createElement('div', { className: 'nav-container' }, [
       React.createElement('h1', { className: 'nav-title', key: 'title' }, [
         React.createElement(Activity, { key: 'icon' }),
-        'PerformanceDB'
+        'Court Craft Tracker'
       ]),
       React.createElement('div', { className: 'nav-buttons', key: 'buttons' }, [
         React.createElement('button', {
@@ -497,10 +497,8 @@ const HistoryView = ({ players, sessions }) => {
 };
 
 // ========================================
-// ENHANCED INSIGHTS VIEW - PHASE 1
-// Replace the InsightsView section in your components.js with this code
+// ENHANCED INSIGHTS VIEW
 // ========================================
-
 const InsightsView = ({ players, sessions, rechartsLoaded }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
 
@@ -643,7 +641,7 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
       ])
     ]),
 
-    // Personal Bests Section
+    // Personal Bests Section - ALL JUMP TYPES
     selectedPlayer && insights && insights.personalBests && React.createElement('div', { className: 'card', key: 'personal-bests' }, [
       React.createElement('h3', { className: 'section-header', key: 'header' }, '🏆 Personal Bests'),
       React.createElement('div', { 
@@ -691,9 +689,9 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
           }, window.utils.formatDate(insights.personalBests.bestRunTime.date))
         ]),
         
-        // Best Left Jump
+        // Best Left Single
         insights.personalBests.bestLeftJump && React.createElement('div', {
-          key: 'left',
+          key: 'left-single',
           className: 'pb-card',
           style: { 
             background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
@@ -710,7 +708,7 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
               fontWeight: '600',
               marginBottom: '0.5rem'
             } 
-          }, '⬅️ Left Jump'),
+          }, '⬅️ Left Single'),
           React.createElement('p', { 
             key: 'value', 
             style: { 
@@ -731,9 +729,9 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
           }, window.utils.formatDate(insights.personalBests.bestLeftJump.date))
         ]),
         
-        // Best Right Jump
+        // Best Right Single
         insights.personalBests.bestRightJump && React.createElement('div', {
-          key: 'right',
+          key: 'right-single',
           className: 'pb-card',
           style: { 
             background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
@@ -750,7 +748,7 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
               fontWeight: '600',
               marginBottom: '0.5rem'
             } 
-          }, '➡️ Right Jump'),
+          }, '➡️ Right Single'),
           React.createElement('p', { 
             key: 'value', 
             style: { 
@@ -771,12 +769,132 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
           }, window.utils.formatDate(insights.personalBests.bestRightJump.date))
         ]),
         
-        // Best Sprint
-        insights.personalBests.bestSprint && React.createElement('div', {
-          key: 'sprint',
+        // Best Double Single
+        insights.personalBests.bestDoubleJump && React.createElement('div', {
+          key: 'double-single',
           className: 'pb-card',
           style: { 
-            background: 'linear-gradient(135deg, #fae8ff 0%, #f3e8ff 100%)', 
+            background: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #ec4899' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#9f1239', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '🦘 Double Single'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestDoubleJump.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestDoubleJump.date))
+        ]),
+        
+        // Best Left Triple
+        insights.personalBests.bestLeftTriple && React.createElement('div', {
+          key: 'left-triple',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #0ea5e9' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#075985', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '⬅️⬅️⬅️ Left Triple'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestLeftTriple.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestLeftTriple.date))
+        ]),
+        
+        // Best Right Triple
+        insights.personalBests.bestRightTriple && React.createElement('div', {
+          key: 'right-triple',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #fef9c3 0%, #fde047 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #eab308' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#713f12', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '➡️➡️➡️ Right Triple'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestRightTriple.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestRightTriple.date))
+        ]),
+        
+        // Best Double Triple
+        insights.personalBests.bestDoubleTriple && React.createElement('div', {
+          key: 'double-triple',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', 
             padding: '1rem', 
             borderRadius: '0.5rem', 
             border: '2px solid #a855f7' 
@@ -787,6 +905,46 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
             style: { 
               fontSize: '0.875rem', 
               color: '#6b21a8', 
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            } 
+          }, '🦘🦘🦘 Double Triple'),
+          React.createElement('p', { 
+            key: 'value', 
+            style: { 
+              fontSize: '1.5rem', 
+              fontWeight: 'bold', 
+              color: '#1f2937', 
+              fontFamily: 'monospace', 
+              marginTop: '0.25rem' 
+            } 
+          }, insights.personalBests.bestDoubleTriple.value + ' cm'),
+          React.createElement('p', { 
+            key: 'date', 
+            style: { 
+              fontSize: '0.75rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem' 
+            } 
+          }, window.utils.formatDate(insights.personalBests.bestDoubleTriple.date))
+        ]),
+        
+        // Best Sprint
+        insights.personalBests.bestSprint && React.createElement('div', {
+          key: 'sprint',
+          className: 'pb-card',
+          style: { 
+            background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            border: '2px solid #fb923c' 
+          }
+        }, [
+          React.createElement('p', { 
+            key: 'label', 
+            style: { 
+              fontSize: '0.875rem', 
+              color: '#7c2d12', 
               fontWeight: '600',
               marginBottom: '0.5rem'
             } 
@@ -974,201 +1132,296 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
     ]),
 
     // Performance Trend Charts
-    selectedPlayer && chartData.length > 0 && hasRecharts && (() => {
-      return React.createElement('div', { className: 'card', key: 'charts' }, [
-        React.createElement('h3', { className: 'section-header', key: 'header' }, '📈 Performance Trends'),
-        
-        // Sprint Performance Chart
-        React.createElement('div', { style: { marginBottom: '2rem' }, key: 'sprint-chart' }, [
-          React.createElement('h4', {
-            key: 'title',
-            style: { 
-              fontSize: '1rem', 
-              fontWeight: '600', 
-              marginBottom: '1rem', 
-              color: '#374151',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }
-          }, [
-            React.createElement('span', { key: 'icon' }, '⚡'),
-            'Sprint Performance (First vs Last Set)'
-          ]),
-          React.createElement('div', { 
-            key: 'canvas-container',
-            style: { position: 'relative', height: '300px' }
-          }, 
-            React.createElement('canvas', { 
-              key: 'canvas',
-              ref: (canvas) => {
-                if (canvas && chartData.length > 0) {
-                  // Destroy existing chart if any
-                  if (canvas.chartInstance) {
-                    canvas.chartInstance.destroy();
-                  }
-                  
-                  // Create new chart
-                  const ctx = canvas.getContext('2d');
-                  canvas.chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                      labels: chartData.map(d => d.date),
-                      datasets: [
-                        {
-                          label: 'First Sprint',
-                          data: chartData.map(d => d.sprint1),
-                          borderColor: '#3b82f6',
-                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                          borderWidth: 2,
-                          tension: 0.4,
-                          pointRadius: 4,
-                          pointHoverRadius: 6
-                        },
-                        {
-                          label: 'Last Sprint',
-                          data: chartData.map(d => d.sprint6),
-                          borderColor: '#ef4444',
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                          borderWidth: 2,
-                          tension: 0.4,
-                          pointRadius: 4,
-                          pointHoverRadius: 6
-                        }
-                      ]
-                    },
-                    options: {
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: true,
-                          position: 'top'
-                        },
-                        tooltip: {
-                          mode: 'index',
-                          intersect: false
-                        }
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          title: {
-                            display: true,
-                            text: 'Reps'
-                          }
-                        },
-                        x: {
-                          title: {
-                            display: true,
-                            text: 'Date'
-                          }
-                        }
-                      }
-                    }
-                  });
-                }
-              }
-            })
-          )
+    selectedPlayer && chartData.length > 0 && hasRecharts && React.createElement('div', { className: 'card', key: 'charts' }, [
+      React.createElement('h3', { className: 'section-header', key: 'header' }, '📈 Performance Trends'),
+      
+      // Run Time Chart
+      React.createElement('div', { style: { marginBottom: '2rem' }, key: 'run-chart' }, [
+        React.createElement('h4', {
+          key: 'title',
+          style: { 
+            fontSize: '1rem', 
+            fontWeight: '600', 
+            marginBottom: '1rem', 
+            color: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }
+        }, [
+          React.createElement('span', { key: 'icon' }, '🏃'),
+          '2km Run Time (Lower is Better)'
         ]),
-        
-        // Jump Performance Chart
-        React.createElement('div', { key: 'jump-chart' }, [
-          React.createElement('h4', {
-            key: 'title',
-            style: { 
-              fontSize: '1rem', 
-              fontWeight: '600', 
-              marginBottom: '1rem', 
-              color: '#374151',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }
-          }, [
-            React.createElement('span', { key: 'icon' }, '🦘'),
-            'Broad Jump Performance (Single Leg)'
-          ]),
-          React.createElement('div', { 
-            key: 'canvas-container',
-            style: { position: 'relative', height: '300px' }
-          }, 
-            React.createElement('canvas', { 
-              key: 'canvas',
-              ref: (canvas) => {
-                if (canvas && chartData.length > 0) {
-                  // Destroy existing chart if any
-                  if (canvas.chartInstance) {
-                    canvas.chartInstance.destroy();
-                  }
-                  
-                  // Create new chart
-                  const ctx = canvas.getContext('2d');
-                  canvas.chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                      labels: chartData.map(d => d.date),
-                      datasets: [
-                        {
-                          label: 'Left Leg',
-                          data: chartData.map(d => d.leftJump),
-                          borderColor: '#10b981',
-                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                          borderWidth: 2,
-                          tension: 0.4,
-                          pointRadius: 4,
-                          pointHoverRadius: 6
-                        },
-                        {
-                          label: 'Right Leg',
-                          data: chartData.map(d => d.rightJump),
-                          borderColor: '#f59e0b',
-                          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                          borderWidth: 2,
-                          tension: 0.4,
-                          pointRadius: 4,
-                          pointHoverRadius: 6
-                        }
-                      ]
-                    },
-                    options: {
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: true,
-                          position: 'top'
-                        },
-                        tooltip: {
-                          mode: 'index',
-                          intersect: false
-                        }
+        React.createElement('div', { 
+          key: 'canvas-container',
+          style: { position: 'relative', height: '300px' }
+        }, 
+          React.createElement('canvas', { 
+            key: 'canvas',
+            ref: function(canvas) {
+              if (canvas && chartData.filter(d => d.runTime).length > 0) {
+                if (canvas.chartInstance) {
+                  canvas.chartInstance.destroy();
+                }
+                
+                const ctx = canvas.getContext('2d');
+                const runData = chartData.filter(d => d.runTime);
+                
+                canvas.chartInstance = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    labels: runData.map(d => d.date),
+                    datasets: [
+                      {
+                        label: '2km Time',
+                        data: runData.map(d => d.runTime),
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: true
+                      }
+                    ]
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top'
                       },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          title: {
-                            display: true,
-                            text: 'Distance (cm)'
-                          }
-                        },
-                        x: {
-                          title: {
-                            display: true,
-                            text: 'Date'
+                      tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                          label: function(context) {
+                            const seconds = context.parsed.y;
+                            const min = Math.floor(seconds / 60);
+                            const sec = Math.floor(seconds % 60);
+                            return '2km Time: ' + min + ':' + String(sec).padStart(2, '0');
                           }
                         }
                       }
+                    },
+                    scales: {
+                      y: {
+                        reverse: true,
+                        title: {
+                          display: true,
+                          text: 'Time (seconds)'
+                        },
+                        ticks: {
+                          callback: function(value) {
+                            const min = Math.floor(value / 60);
+                            const sec = Math.floor(value % 60);
+                            return min + ':' + String(sec).padStart(2, '0');
+                          }
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Date'
+                        }
+                      }
                     }
-                  });
-                }
+                  }
+                });
               }
-            })
-          )
-        ])
-      ]);
-    })(),
+            }
+          })
+        )
+      ]),
+      
+      // Sprint Performance Chart
+      React.createElement('div', { style: { marginBottom: '2rem' }, key: 'sprint-chart' }, [
+        React.createElement('h4', {
+          key: 'title',
+          style: { 
+            fontSize: '1rem', 
+            fontWeight: '600', 
+            marginBottom: '1rem', 
+            color: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }
+        }, [
+          React.createElement('span', { key: 'icon' }, '⚡'),
+          'Sprint Performance (First vs Last Set)'
+        ]),
+        React.createElement('div', { 
+          key: 'canvas-container',
+          style: { position: 'relative', height: '300px' }
+        }, 
+          React.createElement('canvas', { 
+            key: 'canvas',
+            ref: function(canvas) {
+              if (canvas && chartData.length > 0) {
+                if (canvas.chartInstance) {
+                  canvas.chartInstance.destroy();
+                }
+                
+                const ctx = canvas.getContext('2d');
+                canvas.chartInstance = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    labels: chartData.map(d => d.date),
+                    datasets: [
+                      {
+                        label: 'First Sprint',
+                        data: chartData.map(d => d.sprint1),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                      },
+                      {
+                        label: 'Last Sprint',
+                        data: chartData.map(d => d.sprint6),
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                      }
+                    ]
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top'
+                      },
+                      tooltip: {
+                        mode: 'index',
+                        intersect: false
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Reps'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Date'
+                        }
+                      }
+                    }
+                  }
+                });
+              }
+            }
+          })
+        )
+      ]),
+      
+      // Jump Performance Chart
+      React.createElement('div', { key: 'jump-chart' }, [
+        React.createElement('h4', {
+          key: 'title',
+          style: { 
+            fontSize: '1rem', 
+            fontWeight: '600', 
+            marginBottom: '1rem', 
+            color: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }
+        }, [
+          React.createElement('span', { key: 'icon' }, '🦘'),
+          'Broad Jump Performance (Single Leg)'
+        ]),
+        React.createElement('div', { 
+          key: 'canvas-container',
+          style: { position: 'relative', height: '300px' }
+        }, 
+          React.createElement('canvas', { 
+            key: 'canvas',
+            ref: function(canvas) {
+              if (canvas && chartData.length > 0) {
+                if (canvas.chartInstance) {
+                  canvas.chartInstance.destroy();
+                }
+                
+                const ctx = canvas.getContext('2d');
+                canvas.chartInstance = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    labels: chartData.map(d => d.date),
+                    datasets: [
+                      {
+                        label: 'Left Leg',
+                        data: chartData.map(d => d.leftJump),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                      },
+                      {
+                        label: 'Right Leg',
+                        data: chartData.map(d => d.rightJump),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                      }
+                    ]
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top'
+                      },
+                      tooltip: {
+                        mode: 'index',
+                        intersect: false
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Distance (cm)'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Date'
+                        }
+                      }
+                    }
+                  }
+                });
+              }
+            }
+          })
+        )
+      ])
+    ]),
 
     // Fallback if charts aren't loading
     selectedPlayer && chartData.length > 0 && !hasRecharts && React.createElement('div', { className: 'card', key: 'no-charts' },
@@ -1199,7 +1452,6 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
     )
   ]);
 };
-
 
 // ========================================
 // RECORD VIEW
