@@ -1,52 +1,18 @@
 const { useState, useEffect } = React;
-const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } = window.Recharts;
 
-// Mock storage for standalone version (replace with actual backend)
-const mockStorage = {
-  data: {},
-  
-  async get(key) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        if (this.data[key]) {
-          resolve({ key, value: this.data[key] });
-        } else {
-          resolve(null);
-        }
-      }, 10);
-    });
-  },
-  
-  async set(key, value) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        this.data[key] = value;
-        resolve({ key, value });
-      }, 10);
-    });
-  },
-  
-  async list(prefix) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const keys = Object.keys(this.data).filter(k => k.startsWith(prefix));
-        resolve({ keys, prefix });
-      }, 10);
-    });
-  },
-  
-  async delete(key) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        delete this.data[key];
-        resolve({ key, deleted: true });
-      }, 10);
-    });
-  }
+// Wait for Recharts to load properly
+const checkRecharts = () => {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (window.Recharts && window.Recharts.LineChart) {
+        resolve(window.Recharts);
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
 };
-
-// Use window.storage if available, otherwise use mockStorage
-const storage = window.storage || mockStorage;
 
 // Icon Components (simplified versions)
 const Activity = () => <span>🏃</span>;
@@ -60,6 +26,7 @@ const AthleteTracker = () => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [view, setView] = useState('record');
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [rechartsLoaded, setRechartsLoaded] = useState(false);
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -79,33 +46,50 @@ const AthleteTracker = () => {
   });
 
   useEffect(() => {
+    checkRecharts().then(() => {
+      setRechartsLoaded(true);
+    });
     loadData();
   }, []);
 
   const loadData = async () => {
+    // Check if window.storage exists
+    if (!window.storage) {
+      console.log('Storage not available, using mock data');
+      return;
+    }
+
     try {
-      const playersData = await storage.list('player:');
+      const playersData = await window.storage.list('player:');
       const loadedPlayers = [];
       
       if (playersData && playersData.keys) {
         for (const key of playersData.keys) {
-          const result = await storage.get(key);
-          if (result) {
-            loadedPlayers.push(JSON.parse(result.value));
+          try {
+            const result = await window.storage.get(key);
+            if (result) {
+              loadedPlayers.push(JSON.parse(result.value));
+            }
+          } catch (err) {
+            console.log('Error loading player:', err);
           }
         }
       }
       
       setPlayers(loadedPlayers);
 
-      const sessionsData = await storage.list('session:');
+      const sessionsData = await window.storage.list('session:');
       const loadedSessions = [];
       
       if (sessionsData && sessionsData.keys) {
         for (const key of sessionsData.keys) {
-          const result = await storage.get(key);
-          if (result) {
-            loadedSessions.push(JSON.parse(result.value));
+          try {
+            const result = await window.storage.get(key);
+            if (result) {
+              loadedSessions.push(JSON.parse(result.value));
+            }
+          } catch (err) {
+            console.log('Error loading session:', err);
           }
         }
       }
@@ -116,7 +100,7 @@ const AthleteTracker = () => {
     }
   };
 
-  const addPlayer = () => {
+  const addPlayer = async () => {
     if (!newPlayerName.trim()) return;
 
     const newPlayer = {
@@ -124,15 +108,21 @@ const AthleteTracker = () => {
       name: newPlayerName.trim()
     };
 
-    storage.set(`player:${newPlayer.id}`, JSON.stringify(newPlayer))
-      .then(() => {
-        setPlayers([...players, newPlayer]);
-        setNewPlayerName('');
-      })
-      .catch(() => alert('Error adding player'));
+    if (!window.storage) {
+      alert('Storage not available');
+      return;
+    }
+
+    try {
+      await window.storage.set(`player:${newPlayer.id}`, JSON.stringify(newPlayer));
+      setPlayers([...players, newPlayer]);
+      setNewPlayerName('');
+    } catch (error) {
+      alert('Error adding player');
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedPlayer) {
       alert('Please select a player');
       return;
@@ -162,30 +152,36 @@ const AthleteTracker = () => {
       ]
     };
 
-    storage.set(`session:${session.id}`, JSON.stringify(session))
-      .then(() => {
-        setSessions([session, ...sessions]);
-        
-        setFormData({
-          date: new Date().toISOString().split('T')[0],
-          runTime: '',
-          leftSingle: '',
-          rightSingle: '',
-          doubleSingle: '',
-          leftTriple: '',
-          rightTriple: '',
-          doubleTriple: '',
-          sprint1: '',
-          sprint2: '',
-          sprint3: '',
-          sprint4: '',
-          sprint5: '',
-          sprint6: ''
-        });
-        
-        alert('Training session saved successfully!');
-      })
-      .catch(() => alert('Error saving session'));
+    if (!window.storage) {
+      alert('Storage not available');
+      return;
+    }
+
+    try {
+      await window.storage.set(`session:${session.id}`, JSON.stringify(session));
+      setSessions([session, ...sessions]);
+      
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        runTime: '',
+        leftSingle: '',
+        rightSingle: '',
+        doubleSingle: '',
+        leftTriple: '',
+        rightTriple: '',
+        doubleTriple: '',
+        sprint1: '',
+        sprint2: '',
+        sprint3: '',
+        sprint4: '',
+        sprint5: '',
+        sprint6: ''
+      });
+      
+      alert('Training session saved successfully!');
+    } catch (error) {
+      alert('Error saving session');
+    }
   };
 
   const getPlayerSessions = (playerId) => {
@@ -262,6 +258,18 @@ const AthleteTracker = () => {
 
   const insights = selectedPlayer ? calculateInsights(selectedPlayer) : null;
   const chartData = selectedPlayer ? getChartData(selectedPlayer) : [];
+
+  // Get Recharts components only after they're loaded
+  const LineChart = rechartsLoaded ? window.Recharts.LineChart : null;
+  const Line = rechartsLoaded ? window.Recharts.Line : null;
+  const XAxis = rechartsLoaded ? window.Recharts.XAxis : null;
+  const YAxis = rechartsLoaded ? window.Recharts.YAxis : null;
+  const CartesianGrid = rechartsLoaded ? window.Recharts.CartesianGrid : null;
+  const Tooltip = rechartsLoaded ? window.Recharts.Tooltip : null;
+  const Legend = rechartsLoaded ? window.Recharts.Legend : null;
+  const ResponsiveContainer = rechartsLoaded ? window.Recharts.ResponsiveContainer : null;
+  const BarChart = rechartsLoaded ? window.Recharts.BarChart : null;
+  const Bar = rechartsLoaded ? window.Recharts.Bar : null;
 
   return (
     <div>
@@ -504,7 +512,7 @@ const AthleteTracker = () => {
                   </div>
                 </div>
 
-                {chartData.length > 0 && (
+                {rechartsLoaded && chartData.length > 0 && (
                   <>
                     <div className="card">
                       <h3 className="section-header">
@@ -539,6 +547,12 @@ const AthleteTracker = () => {
                       </ResponsiveContainer>
                     </div>
                   </>
+                )}
+                
+                {!rechartsLoaded && (
+                  <div className="card">
+                    <p className="text-center py-8">Loading charts...</p>
+                  </div>
                 )}
               </>
             )}
@@ -611,6 +625,9 @@ const AthleteTracker = () => {
   );
 };
 
-// Render the app
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<AthleteTracker />);
+// Wait for DOM to be ready and Recharts to load before rendering
+window.addEventListener('DOMContentLoaded', async () => {
+  await checkRecharts();
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<AthleteTracker />);
+});

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,6 +10,9 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve static files from the current directory
+app.use(express.static(__dirname));
 
 // Initialize SQLite Database
 const db = new sqlite3.Database('./athlete_tracker.db', (err) => {
@@ -387,7 +391,8 @@ app.get('/api/players/:id/stats', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Open http://localhost:${PORT} in your browser`);
 });
 
 // Graceful shutdown
