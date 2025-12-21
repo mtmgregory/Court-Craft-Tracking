@@ -1,11 +1,24 @@
+// Add console logs to debug
+console.log('App.js loaded');
+console.log('React available:', typeof React !== 'undefined');
+console.log('ReactDOM available:', typeof ReactDOM !== 'undefined');
+
 const { useState, useEffect } = React;
 
 // Wait for Recharts to load properly
 const checkRecharts = () => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const maxAttempts = 100; // 5 seconds max
+    
     const check = () => {
+      attempts++;
       if (window.Recharts && window.Recharts.LineChart) {
+        console.log('Recharts loaded successfully after', attempts, 'attempts');
         resolve(window.Recharts);
+      } else if (attempts >= maxAttempts) {
+        console.warn('Recharts took too long to load, proceeding anyway');
+        resolve(null);
       } else {
         setTimeout(check, 50);
       }
@@ -21,6 +34,8 @@ const Calendar = () => <span>📅</span>;
 const TrendingUp = () => <span>📈</span>;
 
 const AthleteTracker = () => {
+  console.log('AthleteTracker component rendering');
+  
   const [players, setPlayers] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState('');
@@ -46,58 +61,22 @@ const AthleteTracker = () => {
   });
 
   useEffect(() => {
+    console.log('Component mounted, loading Recharts and data');
     checkRecharts().then(() => {
+      console.log('Recharts ready, setting state');
       setRechartsLoaded(true);
     });
     loadData();
   }, []);
 
   const loadData = async () => {
-    // Check if window.storage exists
-    if (!window.storage) {
-      console.log('Storage not available, using mock data');
-      return;
-    }
-
-    try {
-      const playersData = await window.storage.list('player:');
-      const loadedPlayers = [];
-      
-      if (playersData && playersData.keys) {
-        for (const key of playersData.keys) {
-          try {
-            const result = await window.storage.get(key);
-            if (result) {
-              loadedPlayers.push(JSON.parse(result.value));
-            }
-          } catch (err) {
-            console.log('Error loading player:', err);
-          }
-        }
-      }
-      
-      setPlayers(loadedPlayers);
-
-      const sessionsData = await window.storage.list('session:');
-      const loadedSessions = [];
-      
-      if (sessionsData && sessionsData.keys) {
-        for (const key of sessionsData.keys) {
-          try {
-            const result = await window.storage.get(key);
-            if (result) {
-              loadedSessions.push(JSON.parse(result.value));
-            }
-          } catch (err) {
-            console.log('Error loading session:', err);
-          }
-        }
-      }
-      
-      setSessions(loadedSessions.sort((a, b) => new Date(b.date) - new Date(a.date)));
-    } catch (error) {
-      console.log('No existing data found');
-    }
+    console.log('Loading data...');
+    console.log('window.storage available:', typeof window.storage !== 'undefined');
+    
+    // For now, just use empty data to test rendering
+    setPlayers([]);
+    setSessions([]);
+    console.log('Data loaded (empty for now)');
   };
 
   const addPlayer = async () => {
@@ -108,18 +87,10 @@ const AthleteTracker = () => {
       name: newPlayerName.trim()
     };
 
-    if (!window.storage) {
-      alert('Storage not available');
-      return;
-    }
-
-    try {
-      await window.storage.set(`player:${newPlayer.id}`, JSON.stringify(newPlayer));
-      setPlayers([...players, newPlayer]);
-      setNewPlayerName('');
-    } catch (error) {
-      alert('Error adding player');
-    }
+    console.log('Adding player:', newPlayer);
+    setPlayers([...players, newPlayer]);
+    setNewPlayerName('');
+    alert('Player added! (Note: No backend storage yet)');
   };
 
   const handleSubmit = async () => {
@@ -152,36 +123,27 @@ const AthleteTracker = () => {
       ]
     };
 
-    if (!window.storage) {
-      alert('Storage not available');
-      return;
-    }
-
-    try {
-      await window.storage.set(`session:${session.id}`, JSON.stringify(session));
-      setSessions([session, ...sessions]);
-      
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        runTime: '',
-        leftSingle: '',
-        rightSingle: '',
-        doubleSingle: '',
-        leftTriple: '',
-        rightTriple: '',
-        doubleTriple: '',
-        sprint1: '',
-        sprint2: '',
-        sprint3: '',
-        sprint4: '',
-        sprint5: '',
-        sprint6: ''
-      });
-      
-      alert('Training session saved successfully!');
-    } catch (error) {
-      alert('Error saving session');
-    }
+    console.log('Saving session:', session);
+    setSessions([session, ...sessions]);
+    
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      runTime: '',
+      leftSingle: '',
+      rightSingle: '',
+      doubleSingle: '',
+      leftTriple: '',
+      rightTriple: '',
+      doubleTriple: '',
+      sprint1: '',
+      sprint2: '',
+      sprint3: '',
+      sprint4: '',
+      sprint5: '',
+      sprint6: ''
+    });
+    
+    alert('Training session saved! (Note: No backend storage yet)');
   };
 
   const getPlayerSessions = (playerId) => {
@@ -270,6 +232,8 @@ const AthleteTracker = () => {
   const ResponsiveContainer = rechartsLoaded ? window.Recharts.ResponsiveContainer : null;
   const BarChart = rechartsLoaded ? window.Recharts.BarChart : null;
   const Bar = rechartsLoaded ? window.Recharts.Bar : null;
+
+  console.log('Rendering with view:', view);
 
   return (
     <div>
@@ -625,9 +589,49 @@ const AthleteTracker = () => {
   );
 };
 
-// Wait for DOM to be ready and Recharts to load before rendering
-window.addEventListener('DOMContentLoaded', async () => {
-  await checkRecharts();
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<AthleteTracker />);
-});
+// Function to initialize the app
+const initApp = async () => {
+  console.log('Initializing app...');
+  console.log('Checking for root element:', document.getElementById('root'));
+  
+  try {
+    console.log('Waiting for Recharts...');
+    await checkRecharts();
+    console.log('Recharts loaded successfully!');
+    
+    console.log('About to create React root');
+    const rootElement = document.getElementById('root');
+    if (!rootElement) {
+      console.error('Root element not found!');
+      return;
+    }
+    
+    console.log('Creating React root...');
+    const root = ReactDOM.createRoot(rootElement);
+    console.log('React root created successfully!');
+    
+    console.log('Rendering app component...');
+    root.render(<AthleteTracker />);
+    console.log('App rendered successfully! Check if you see content above.');
+  } catch (error) {
+    console.error('Error rendering app:', error);
+    console.error('Error stack:', error.stack);
+    // Try to show error on page
+    document.getElementById('root').innerHTML = `
+      <div style="padding: 20px; background: #fee; border: 2px solid #f00; margin: 20px; border-radius: 8px;">
+        <h2>Error Loading App</h2>
+        <p><strong>Error:</strong> ${error.message}</p>
+        <pre>${error.stack}</pre>
+      </div>
+    `;
+  }
+};
+
+// Check if DOM is already loaded
+if (document.readyState === 'loading') {
+  console.log('DOM still loading, waiting for DOMContentLoaded');
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  console.log('DOM already loaded, initializing immediately');
+  initApp();
+}
