@@ -1,6 +1,8 @@
 // ========================================
-// COMBINED COMPONENTS FILE - FIXED VERSION
+// COMBINED COMPONENTS FILE - COMPLETE VERSION
 // All React components in one file for better performance
+// Includes: Fixed Chart Memory Leaks (#1), Input Validation (#3), 
+//           Optimized Re-renders (#5), Date Handling (#6), Lazy Loading (#14)
 // ========================================
 
 const { useState, useEffect, useMemo } = React;
@@ -79,15 +81,17 @@ const Navigation = ({ view, setView }) => {
 };
 
 // ========================================
-// ADD PLAYER
+// ADD PLAYER (Updated with validation #3)
 // ========================================
 const AddPlayer = ({ onPlayerAdded }) => {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddPlayer = async () => {
-    if (!newPlayerName.trim()) {
-      alert('Please enter a player name');
+    const validation = window.utils.validators.validatePlayerName(newPlayerName);
+    
+    if (!validation.valid) {
+      alert(validation.error);
       return;
     }
 
@@ -96,9 +100,10 @@ const AddPlayer = ({ onPlayerAdded }) => {
       const player = await window.firebaseService.addPlayer(newPlayerName);
       onPlayerAdded(player);
       setNewPlayerName('');
+      alert('✅ Player added successfully!');
     } catch (error) {
       console.error('Error adding player:', error);
-      alert('Error adding player: ' + error.message);
+      alert('❌ Error adding player: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -198,13 +203,13 @@ const RecentSessions = ({ sessions }) => {
 };
 
 // ========================================
-// TRAINING FORM
+// TRAINING FORM (Updated with validation #3 and date handling #6)
 // ========================================
 const TrainingForm = ({ players, onSessionSaved }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: window.utils.getLocalDateString(), // Fixed date handling (#6)
     runTime: '',
     leftSingle: '', rightSingle: '', doubleSingle: '',
     leftTriple: '', rightTriple: '', doubleTriple: '',
@@ -214,7 +219,7 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 
   const resetForm = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: window.utils.getLocalDateString(), // Fixed date handling (#6)
       runTime: '',
       leftSingle: '', rightSingle: '', doubleSingle: '',
       leftTriple: '', rightTriple: '', doubleTriple: '',
@@ -229,8 +234,13 @@ const TrainingForm = ({ players, onSessionSaved }) => {
       return;
     }
 
-    if (formData.runTime && !window.utils.validateRunTime(formData.runTime)) {
-      alert('Please enter run time in MM:SS format (e.g., 07:30)');
+    // Use the new validation system (#3)
+    const validation = window.utils.validators.validateTrainingForm(formData);
+    
+    if (!validation.valid) {
+      const errorMessage = 'Please fix the following errors:\n\n' + 
+        validation.errors.map((err, idx) => `${idx + 1}. ${err}`).join('\n');
+      alert(errorMessage);
       return;
     }
 
@@ -263,10 +273,10 @@ const TrainingForm = ({ players, onSessionSaved }) => {
       const savedSession = await window.firebaseService.addSession(session);
       onSessionSaved(savedSession);
       resetForm();
-      alert('Training session saved!');
+      alert('✅ Training session saved successfully!');
     } catch (error) {
       console.error('Error saving session:', error);
-      alert('Error saving session: ' + error.message);
+      alert('❌ Error saving session: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -409,7 +419,7 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 };
 
 // ========================================
-// HISTORY VIEW
+// HISTORY VIEW (Updated with date handling #6)
 // ========================================
 const HistoryView = ({ players, sessions }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
@@ -449,7 +459,7 @@ const HistoryView = ({ players, sessions }) => {
                     key: 'name'
                   }, session.playerName),
                   React.createElement('p', { className: 'session-date', key: 'date' },
-                    window.utils.formatDateLong(session.date)
+                    window.utils.formatDateLong(session.date) // Fixed date handling (#6)
                   )
                 ]),
                 React.createElement('div', { key: 'time' }, [
@@ -497,22 +507,540 @@ const HistoryView = ({ players, sessions }) => {
 };
 
 // ========================================
-// ENHANCED INSIGHTS VIEW
+// CHART COMPONENTS (Fixed memory leaks #1)
 // ========================================
-const InsightsView = ({ players, sessions, rechartsLoaded }) => {
+
+// Reusable Chart Component with proper cleanup
+const ChartComponent = ({ type, data, options }) => {
+  const canvasRef = React.useRef(null);
+  const chartInstanceRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!canvasRef.current || !window.Chart) return;
+
+    // Destroy existing chart instance
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+      chartInstanceRef.current = null;
+    }
+
+    // Create new chart
+    const ctx = canvasRef.current.getContext('2d');
+    chartInstanceRef.current = new Chart(ctx, {
+      type,
+      data,
+      options
+    });
+
+    // Cleanup function - runs when component unmounts or before next render
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [type, data, options]); // Recreate chart when data changes
+
+  return React.createElement('canvas', { ref: canvasRef });
+};
+
+// Run Time Chart Component
+const RunTimeChart = ({ chartData }) => {
+  const runData = React.useMemo(() => 
+    chartData.runTime || [],
+    [chartData]
+  );
+
+  if (runData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, runData.length === 0 
+        ? 'No run time data recorded yet' 
+        : 'Need at least 2 sessions with run times to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: runData.map(d => d.date),
+    datasets: [{
+      label: '2km Time',
+      data: runData.map(d => d.runTime),
+      borderColor: '#8b5cf6',
+      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      borderWidth: 3,
+      tension: 0.4,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      fill: true
+    }]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            const seconds = context.parsed.y;
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return '2km Time: ' + min + ':' + String(sec).padStart(2, '0');
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        reverse: true,
+        title: {
+          display: true,
+          text: 'Time (seconds)'
+        },
+        ticks: {
+          callback: function(value) {
+            const min = Math.floor(value / 60);
+            const sec = Math.floor(value % 60);
+            return min + ':' + String(sec).padStart(2, '0');
+          }
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// Sprint Performance Chart Component
+const SprintChart = ({ chartData }) => {
+  const sprintData = React.useMemo(() => 
+    chartData.sprint || [],
+    [chartData]
+  );
+
+  if (sprintData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, sprintData.length === 0 
+        ? 'No sprint data recorded yet' 
+        : 'Need at least 2 sessions with sprints to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: sprintData.map(d => d.date),
+    datasets: [
+      {
+        label: 'First Sprint',
+        data: sprintData.map(d => d.sprint1),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      },
+      {
+        label: 'Last Sprint',
+        data: sprintData.map(d => d.sprint6),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Reps'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// Jump Performance Chart Component
+const JumpChart = ({ chartData }) => {
+  const jumpData = React.useMemo(() => 
+    chartData.singleJump || [],
+    [chartData]
+  );
+
+  if (jumpData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, jumpData.length === 0 
+        ? 'No single jump data recorded yet' 
+        : 'Need at least 2 sessions with jumps to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: jumpData.map(d => d.date),
+    datasets: [
+      {
+        label: 'Left Leg',
+        data: jumpData.map(d => d.leftJump),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: 'Right Leg',
+        data: jumpData.map(d => d.rightJump),
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: 'Double Leg',
+        data: jumpData.map(d => d.doubleJump),
+        borderColor: '#ec4899',
+        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Distance (cm)'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+const TripleJumpChart = ({ chartData }) => {
+  const tripleData = React.useMemo(() => 
+    chartData.tripleJump || [],
+    [chartData]
+  );
+
+  if (tripleData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, tripleData.length === 0 
+        ? 'No triple jump data recorded yet' 
+        : 'Need at least 2 sessions with triple jumps to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: tripleData.map(d => d.date),
+    datasets: [
+      {
+        label: 'Left Triple',
+        data: tripleData.map(d => d.leftTriple),
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: 'Right Triple',
+        data: tripleData.map(d => d.rightTriple),
+        borderColor: '#eab308',
+        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: 'Double Triple',
+        data: tripleData.map(d => d.doubleTriple),
+        borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Distance (cm)'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// ========================================
+// LAZY LOADING HOOK FOR CHART.JS (#14)
+// ========================================
+const useChartJS = () => {
+  const [chartReady, setChartReady] = React.useState(false);
+  const [chartError, setChartError] = React.useState(null);
+  const loadAttemptedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    // Check if already loaded
+    if (window.Chart) {
+      console.log('✅ Chart.js already available');
+      setChartReady(true);
+      return;
+    }
+
+    // Prevent multiple load attempts
+    if (loadAttemptedRef.current) {
+      return;
+    }
+    loadAttemptedRef.current = true;
+
+    console.log('📊 Loading Chart.js dynamically...');
+
+    // Create script element
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    script.async = true;
+
+    // Success handler
+    script.onload = () => {
+      console.log('✅ Chart.js loaded successfully');
+      setChartReady(true);
+    };
+
+    // Error handler
+    script.onerror = () => {
+      console.error('❌ Failed to load Chart.js');
+      setChartError('Failed to load charting library');
+    };
+
+    // Add to document
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      // Don't remove script on unmount - let it persist for other views
+    };
+  }, []);
+
+  return { chartReady, chartError };
+};
+
+// ========================================
+// ENHANCED INSIGHTS VIEW (Optimized #5, Lazy Loading #14)
+// ========================================
+const InsightsView = ({ players, sessions }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('');
+  const { chartReady, chartError } = useChartJS(); // Lazy loading hook (#14)
 
-  const insights = useMemo(() => {
-    if (!selectedPlayer) return null;
-    return window.analyticsService.calculateInsights(sessions, selectedPlayer);
-  }, [selectedPlayer, sessions]);
-
-  const chartData = useMemo(() => {
+  // Step 1: Filter player sessions (only recalculates when player changes or new sessions) (#5)
+  const playerSessions = useMemo(() => {
     if (!selectedPlayer) return [];
-    return window.analyticsService.getChartData(sessions, selectedPlayer);
+    return window.analyticsService.getPlayerSessions(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
 
-  const hasRecharts = rechartsLoaded && window.Chart;
+  // Step 2: Calculate insights (only uses filtered sessions) (#5)
+  const insights = useMemo(() => {
+    if (!selectedPlayer || playerSessions.length === 0) return null;
+    return window.analyticsService.calculateInsights(playerSessions, selectedPlayer);
+  }, [selectedPlayer, playerSessions]);
+
+  // Step 3: Prepare chart data (only recalculates when player sessions change) (#5)
+  const chartData = useMemo(() => {
+    if (!selectedPlayer || playerSessions.length === 0) return [];
+    return window.analyticsService.getChartData(playerSessions, selectedPlayer);
+  }, [selectedPlayer, playerSessions]);
+
+  // Charts are ready when both loaded and window.Chart exists
+  const hasCharts = chartReady && window.Chart;
 
   return React.createElement('div', { className: 'space-y-6' }, [
     // Player Selection Card
@@ -534,7 +1062,7 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
       ])
     ]),
 
-    // Main Insight Cards with Trends and Benchmarks
+    // Main Insight Cards
     selectedPlayer && insights && React.createElement('div', { className: 'grid-4', key: 'insights' }, [
       // Card 1: Total Sessions
       React.createElement('div', {
@@ -641,7 +1169,7 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
       ])
     ]),
 
-    // Personal Bests Section - ALL JUMP TYPES
+    // Personal Bests Section
     selectedPlayer && insights && insights.personalBests && React.createElement('div', { className: 'card', key: 'personal-bests' }, [
       React.createElement('h3', { className: 'section-header', key: 'header' }, '🏆 Personal Bests'),
       React.createElement('div', { 
@@ -1131,305 +1659,133 @@ const InsightsView = ({ players, sessions, rechartsLoaded }) => {
       ])
     ]),
 
-    // Performance Trend Charts
-    selectedPlayer && chartData.length > 0 && hasRecharts && React.createElement('div', { className: 'card', key: 'charts' }, [
+    // Performance Trend Charts with Loading State (#14)
+    selectedPlayer && chartData && React.createElement('div', { className: 'card', key: 'charts' }, [
       React.createElement('h3', { className: 'section-header', key: 'header' }, '📈 Performance Trends'),
       
-      // Run Time Chart
-      React.createElement('div', { style: { marginBottom: '2rem' }, key: 'run-chart' }, [
-        React.createElement('h4', {
-          key: 'title',
-          style: { 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            marginBottom: '1rem', 
-            color: '#374151',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }
-        }, [
-          React.createElement('span', { key: 'icon' }, '🏃'),
-          '2km Run Time (Lower is Better)'
-        ]),
+      // Show loading state while charts are loading
+      !hasCharts && !chartError && React.createElement('div', {
+        key: 'loading',
+        style: {
+          textAlign: 'center',
+          padding: '3rem 1rem',
+          color: '#6b7280'
+        }
+      }, [
         React.createElement('div', { 
-          key: 'canvas-container',
-          style: { position: 'relative', height: '300px' }
-        }, 
-          React.createElement('canvas', { 
-            key: 'canvas',
-            ref: function(canvas) {
-              if (canvas && chartData.filter(d => d.runTime).length > 0) {
-                if (canvas.chartInstance) {
-                  canvas.chartInstance.destroy();
-                }
-                
-                const ctx = canvas.getContext('2d');
-                const runData = chartData.filter(d => d.runTime);
-                
-                canvas.chartInstance = new Chart(ctx, {
-                  type: 'line',
-                  data: {
-                    labels: runData.map(d => d.date),
-                    datasets: [
-                      {
-                        label: '2km Time',
-                        data: runData.map(d => d.runTime),
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        fill: true
-                      }
-                    ]
-                  },
-                  options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: true,
-                        position: 'top'
-                      },
-                      tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        callbacks: {
-                          label: function(context) {
-                            const seconds = context.parsed.y;
-                            const min = Math.floor(seconds / 60);
-                            const sec = Math.floor(seconds % 60);
-                            return '2km Time: ' + min + ':' + String(sec).padStart(2, '0');
-                          }
-                        }
-                      }
-                    },
-                    scales: {
-                      y: {
-                        reverse: true,
-                        title: {
-                          display: true,
-                          text: 'Time (seconds)'
-                        },
-                        ticks: {
-                          callback: function(value) {
-                            const min = Math.floor(value / 60);
-                            const sec = Math.floor(value % 60);
-                            return min + ':' + String(sec).padStart(2, '0');
-                          }
-                        }
-                      },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Date'
-                        }
-                      }
-                    }
-                  }
-                });
-              }
-            }
-          })
-        )
+          key: 'spinner',
+          className: 'loading-spinner',
+          style: { margin: '0 auto 1rem' }
+        }),
+        React.createElement('p', { key: 'text' }, '📊 Loading charts...')
       ]),
-      
-      // Sprint Performance Chart
-      React.createElement('div', { style: { marginBottom: '2rem' }, key: 'sprint-chart' }, [
-        React.createElement('h4', {
-          key: 'title',
-          style: { 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            marginBottom: '1rem', 
-            color: '#374151',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }
-        }, [
-          React.createElement('span', { key: 'icon' }, '⚡'),
-          'Sprint Performance (First vs Last Set)'
-        ]),
-        React.createElement('div', { 
-          key: 'canvas-container',
-          style: { position: 'relative', height: '300px' }
-        }, 
-          React.createElement('canvas', { 
-            key: 'canvas',
-            ref: function(canvas) {
-              if (canvas && chartData.length > 0) {
-                if (canvas.chartInstance) {
-                  canvas.chartInstance.destroy();
-                }
-                
-                const ctx = canvas.getContext('2d');
-                canvas.chartInstance = new Chart(ctx, {
-                  type: 'line',
-                  data: {
-                    labels: chartData.map(d => d.date),
-                    datasets: [
-                      {
-                        label: 'First Sprint',
-                        data: chartData.map(d => d.sprint1),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                      },
-                      {
-                        label: 'Last Sprint',
-                        data: chartData.map(d => d.sprint6),
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                      }
-                    ]
-                  },
-                  options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: true,
-                        position: 'top'
-                      },
-                      tooltip: {
-                        mode: 'index',
-                        intersect: false
-                      }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Reps'
-                        }
-                      },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Date'
-                        }
-                      }
-                    }
-                  }
-                });
-              }
-            }
-          })
-        )
-      ]),
-      
-      // Jump Performance Chart
-      React.createElement('div', { key: 'jump-chart' }, [
-        React.createElement('h4', {
-          key: 'title',
-          style: { 
-            fontSize: '1rem', 
-            fontWeight: '600', 
-            marginBottom: '1rem', 
-            color: '#374151',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }
-        }, [
-          React.createElement('span', { key: 'icon' }, '🦘'),
-          'Broad Jump Performance (Single Leg)'
-        ]),
-        React.createElement('div', { 
-          key: 'canvas-container',
-          style: { position: 'relative', height: '300px' }
-        }, 
-          React.createElement('canvas', { 
-            key: 'canvas',
-            ref: function(canvas) {
-              if (canvas && chartData.length > 0) {
-                if (canvas.chartInstance) {
-                  canvas.chartInstance.destroy();
-                }
-                
-                const ctx = canvas.getContext('2d');
-                canvas.chartInstance = new Chart(ctx, {
-                  type: 'line',
-                  data: {
-                    labels: chartData.map(d => d.date),
-                    datasets: [
-                      {
-                        label: 'Left Leg',
-                        data: chartData.map(d => d.leftJump),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                      },
-                      {
-                        label: 'Right Leg',
-                        data: chartData.map(d => d.rightJump),
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                      }
-                    ]
-                  },
-                  options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        display: true,
-                        position: 'top'
-                      },
-                      tooltip: {
-                        mode: 'index',
-                        intersect: false
-                      }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Distance (cm)'
-                        }
-                      },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Date'
-                        }
-                      }
-                    }
-                  }
-                });
-              }
-            }
-          })
-        )
-      ])
-    ]),
 
-    // Fallback if charts aren't loading
-    selectedPlayer && chartData.length > 0 && !hasRecharts && React.createElement('div', { className: 'card', key: 'no-charts' },
-      React.createElement('p', { 
-        className: 'text-center py-8 text-gray-500',
-        style: { fontStyle: 'italic' }
-      }, '📊 Charts are loading... If they don\'t appear, please refresh the page.')
-    ),
+      // Show error state if charts failed to load
+      chartError && React.createElement('div', {
+        key: 'error',
+        style: {
+          textAlign: 'center',
+          padding: '2rem 1rem',
+          background: '#fef2f2',
+          borderRadius: '0.5rem',
+          color: '#991b1b'
+        }
+      }, [
+        React.createElement('p', { 
+          key: 'icon',
+          style: { fontSize: '2rem', marginBottom: '0.5rem' }
+        }, '⚠️'),
+        React.createElement('p', { 
+          key: 'text',
+          style: { fontWeight: '600' }
+        }, chartError),
+        React.createElement('p', { 
+          key: 'help',
+          style: { fontSize: '0.875rem', marginTop: '0.5rem' }
+        }, 'Please refresh the page to try again')
+      ]),
+
+      // Show charts when ready
+      hasCharts && [
+        // Run Time Chart
+        React.createElement('div', { style: { marginBottom: '2rem' }, key: 'run-chart' }, [
+          React.createElement('h4', {
+            key: 'title',
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '🏃'),
+            '2km Run Time (Lower is Better)'
+          ]),
+          React.createElement(RunTimeChart, { key: 'chart', chartData })
+        ]),
+        
+        // Sprint Chart
+        React.createElement('div', { style: { marginBottom: '2rem' }, key: 'sprint-chart' }, [
+          React.createElement('h4', {
+            key: 'title',
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '⚡'),
+            'Sprint Performance (First vs Last Set)'
+          ]),
+          React.createElement(SprintChart, { key: 'chart', chartData })
+        ]),
+        
+        // Jump Chart
+React.createElement('div', { style: { marginBottom: '2rem' }, key: 'jump-chart' }, [
+  React.createElement('h4', {
+    key: 'title',
+    style: { 
+      fontSize: '1rem', 
+      fontWeight: '600', 
+      marginBottom: '1rem', 
+      color: '#374151',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem'
+    }
+  }, [
+    React.createElement('span', { key: 'icon' }, '🦘'),
+    'Single Jump Performance (All Types)']),
+  React.createElement(JumpChart, { key: 'chart', chartData })
+]),
+
+// Triple Jump Chart - NEW
+React.createElement('div', { key: 'triple-jump-chart' }, [
+  React.createElement('h4', {
+    key: 'title',
+    style: { 
+      fontSize: '1rem', 
+      fontWeight: '600', 
+      marginBottom: '1rem', 
+      color: '#374151',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem'
+    }
+  }, [
+    React.createElement('span', { key: 'icon' }, '🦘🦘🦘'),
+    'Triple Jump Performance (All Types)']),
+  React.createElement(TripleJumpChart, { key: 'chart', chartData })
+])
+      ]
+    ]),
 
     // Empty state when no player selected
     !selectedPlayer && React.createElement('div', { className: 'card', key: 'empty' },
@@ -1483,3 +1839,5 @@ window.Components = {
   InsightsView,
   RecordView
 };
+
+console.log('✅ Components loaded successfully');

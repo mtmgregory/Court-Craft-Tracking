@@ -1,6 +1,7 @@
 // ========================================
 // OPTIMIZED MAIN APPLICATION
 // No Babel needed - plain React.createElement
+// Chart.js loading removed - now handled by lazy loading in components
 // ========================================
 
 console.log('App loading...');
@@ -12,53 +13,16 @@ const AthleteTracker = () => {
   const [players, setPlayers] = React.useState([]);
   const [sessions, setSessions] = React.useState([]);
   const [view, setView] = React.useState('record');
-  const [rechartsLoaded, setRechartsLoaded] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     console.log('Component mounted, loading data');
-    
-    // Load data
     loadData();
     
-    // Check for Chart.js with detailed logging
-    const checkChartJS = () => {
-      console.log('Checking for Chart.js...', {
-        windowChart: !!window.Chart
-      });
-      
-      if (window.Chart) {
-        console.log('✅ Chart.js detected and ready');
-        setRechartsLoaded(true); // Keep the same state name for compatibility
-        return true;
-      }
-      return false;
-    };
-    
-    // Try immediately
-    if (!checkChartJS()) {
-      // If not loaded yet, poll for it
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds
-      
-      const interval = setInterval(() => {
-        console.log(`Chart.js check attempt ${attempts + 1}/${maxAttempts}`);
-        
-        if (checkChartJS()) {
-          clearInterval(interval);
-          console.log('✅ Chart.js loaded successfully');
-        } else if (attempts++ >= maxAttempts) {
-          clearInterval(interval);
-          console.error('❌ Chart.js failed to load after 5 seconds');
-          // Set it to true anyway so users can at least see the rest of the page
-          setRechartsLoaded(true);
-        }
-      }, 100);
-      
-      return () => clearInterval(interval);
-    }
- 
+    // Chart.js checking REMOVED - now handled by lazy loading in InsightsView (#14)
+    // Charts will only load when user navigates to Insights view
   }, []);
+
   const loadData = async () => {
     console.time('Data Load');
     try {
@@ -114,7 +78,7 @@ const AthleteTracker = () => {
       React.createElement('p', {
         key: 'text',
         style: { color: '#6b7280' }
-      }, 'Loading PerformanceDB...')
+      }, 'Loading Court Craft Tracker...')
     ]);
   }
 
@@ -131,8 +95,7 @@ const AthleteTracker = () => {
         : view === 'insights'
         ? React.createElement(window.Components.InsightsView, {
             players,
-            sessions,
-            rechartsLoaded
+            sessions
           })
         : React.createElement(window.Components.HistoryView, {
             players,

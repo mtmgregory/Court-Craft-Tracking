@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    function isValidPlayerName(name) {
+      return name is string 
+        && name.size() >= 2 
+        && name.size() <= 50;
+    }
+    
+    function isValidRunTime(runTime) {
+      return runTime is string 
+        && runTime.matches('^([0-9]|[0-5][0-9]):([0-5][0-9])$');
+    }
+    
+    function isValidBroadJump(value) {
+      return value is number 
+        && value >= 0 
+        && value <= 500;
+    }
+    
+    function isValidSprint(value) {
+      return value is number 
+        && value >= 0 
+        && value <= 60;
+    }
+    
+    // ========================================
+    // PLAYERS COLLECTION
+    // ========================================
+    match /players/{playerId} {
+      // Anyone can read players
+      allow read: if true;
+      
+      // Only allow create with valid data
+      allow create: if request.resource.data.keys().hasAll(['name', 'createdAt'])
+        && isValidPlayerName(request.resource.data.name)
+        && request.resource.data.createdAt == request.time;
+      
+      // Don't allow updates or deletes for now (can add auth later)
+      allow update, delete: if false;
+    }
+    
+    // ========================================
+    // TRAINING SESSIONS COLLECTION
+    // ========================================
+    match /training_sessions/{sessionId} {
+      // Anyone can read sessions
+      allow read: if true;
+      
+      // Validate session data on create
+      allow create: if request.resource.data.keys().hasAll([
+          'playerId', 
+          'playerName', 
+          'date', 
+          'runTime',
+          'broadJumps',
+          'sprints',
+          'createdAt'
+        ])
+        && request.resource.data.playerId is string
+        && request.resource.data.playerName is string
+        && request.resource.data.date is string
+        && (request.resource.data.runTime == '' || isValidRunTime(request.resource.data.runTime))
+        && request.resource.data.broadJumps.keys().hasAll([
+          'leftSingle', 
+          'rightSingle', 
+          'doubleSingle',
+          'leftTriple',
+          'rightTriple',
+          'doubleTriple'
+        ])
+        && isValidBroadJump(request.resource.data.broadJumps.leftSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.rightSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.doubleSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.leftTriple)
+        && isValidBroadJump(request.resource.data.broadJumps.rightTriple)
+        && isValidBroadJump(request.resource.data.broadJumps.doubleTriple)
+        && request.resource.data.sprints is list
+        && request.resource.data.sprints.size() == 6
+        && request.resource.data.sprints[0] is number
+        && isValidSprint(request.resource.data.sprints[0])
+        && isValidSprint(request.resource.data.sprints[1])
+        && isValidSprint(request.resource.data.sprints[2])
+        && isValidSprint(request.resource.data.sprints[3])
+        && isValidSprint(request.resource.data.sprints[4])
+        && isValidSprint(request.resource.data.sprints[5])
+        && request.resource.data.createdAt == request.time;
+      
+      // Don't allow updates or deletes for now
+      allow update, delete: if false;
+    }
+  }
+}

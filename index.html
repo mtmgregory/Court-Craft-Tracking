@@ -49,19 +49,9 @@
     <!-- 3. Firebase Configuration -->
     <script src="firebase-config.js"></script>
     
-   <!-- 4. Chart.js - Much more reliable than Recharts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
-    <script>
-      console.log('✅ Chart.js script loaded');
-      setTimeout(function() {
-        if (window.Chart) {
-          console.log('✅ Chart.js available and ready');
-        } else {
-          console.error('❌ Chart.js not available');
-        }
-      }, 100);
-    </script>
+    <!-- 4. Chart.js - REMOVED FOR LAZY LOADING (#14) -->
+    <!-- Chart.js will be loaded dynamically when user views Insights -->
+    <!-- This reduces initial bundle size by ~186KB -->
     
     <!-- 5. Icons -->
     <script>
@@ -84,7 +74,7 @@
       console.log('=== Checking Dependencies ===');
       console.log('React:', typeof React);
       console.log('ReactDOM:', typeof ReactDOM);
-      console.log('Chart.js:', typeof Chart);
+      console.log('Chart.js:', typeof Chart, '(will load on-demand)');
     </script>
 
     <!-- 9. Main App -->

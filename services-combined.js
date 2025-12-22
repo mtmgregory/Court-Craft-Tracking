@@ -1,14 +1,89 @@
 // ========================================
-// ENHANCED ANALYTICS SERVICE - PHASE 1
-// Phase 1 Features: Trends, Personal Bests, Benchmarks, Advanced Fatigue, Session Quality
-// Replace your existing services-combined.js with this file
+// ENHANCED ANALYTICS SERVICE - COMPLETE
+// Includes: Input Validation (#3), Optimized Functions (#5), Date Handling (#6)
 // ========================================
 
 (function() {
   'use strict';
   
   // ========================================
-  // UTILITY HELPERS (Keep existing)
+  // VALIDATION CONSTANTS & RULES (#3)
+  // ========================================
+  const VALIDATION_RULES = {
+    runTime: {
+      regex: /^([0-9]|[0-5][0-9]):([0-5][0-9])$/,
+      min: 240, // 4 minutes in seconds
+      max: 900, // 15 minutes in seconds
+      errorMsg: 'Run time must be in MM:SS format between 04:00 and 15:00'
+    },
+    broadJump: {
+      min: 50,
+      max: 500,
+      errorMsg: 'Broad jump distance must be between 50cm and 500cm'
+    },
+    sprint: {
+      min: 0,
+      max: 60,
+      errorMsg: 'Sprint reps must be between 0 and 60'
+    }
+  };
+
+  // ========================================
+  // DATE UTILITIES (#6)
+  // ========================================
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseLocalDate = (dateString) => {
+    // Parse date string in local timezone (avoid UTC conversion)
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const formatDate = (dateString) => {
+    const date = parseLocalDate(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric'
+    });
+  };
+
+  const formatDateLong = (dateString) => {
+    const date = parseLocalDate(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric'
+    });
+  };
+
+  const compareDates = (date1, date2) => {
+    // Compare dates without time component
+    const d1 = parseLocalDate(date1);
+    const d2 = parseLocalDate(date2);
+    return d1.getTime() - d2.getTime();
+  };
+
+  const isToday = (dateString) => {
+    const today = getLocalDateString();
+    return dateString === today;
+  };
+
+  const isThisWeek = (dateString) => {
+    const date = parseLocalDate(dateString);
+    const today = new Date();
+    const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+    return date >= weekAgo && date <= today;
+  };
+
+  // ========================================
+  // RUN TIME UTILITIES
   // ========================================
   const validateRunTime = (timeString) => {
     if (!timeString || !timeString.includes(':')) return false;
@@ -34,32 +109,228 @@
     return min + ':' + String(sec).padStart(2, '0');
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
+  // ========================================
+  // VALIDATION FUNCTIONS (#3)
+  // ========================================
+  const validators = {
+    // Validate run time format and range
+    validateRunTime: function(timeString) {
+      if (!timeString || timeString.trim() === '') {
+        return { valid: true }; // Allow empty (optional field)
+      }
+
+      if (!VALIDATION_RULES.runTime.regex.test(timeString)) {
+        return { 
+          valid: false, 
+          error: VALIDATION_RULES.runTime.errorMsg 
+        };
+      }
+
+      const [min, sec] = timeString.split(':').map(Number);
+      const totalSeconds = min * 60 + sec;
+
+      if (totalSeconds < VALIDATION_RULES.runTime.min || totalSeconds > VALIDATION_RULES.runTime.max) {
+        return { 
+          valid: false, 
+          error: VALIDATION_RULES.runTime.errorMsg 
+        };
+      }
+
+      return { valid: true };
+    },
+
+    // Validate broad jump distance
+    validateBroadJump: function(value, fieldName) {
+      if (!value || value.trim() === '') {
+        return { valid: true }; // Allow empty (optional field)
+      }
+
+      const num = parseFloat(value);
+      
+      if (isNaN(num)) {
+        return { 
+          valid: false, 
+          error: `${fieldName} must be a valid number` 
+        };
+      }
+
+      if (num < VALIDATION_RULES.broadJump.min || num > VALIDATION_RULES.broadJump.max) {
+        return { 
+          valid: false, 
+          error: `${fieldName}: ${VALIDATION_RULES.broadJump.errorMsg}` 
+        };
+      }
+
+      return { valid: true };
+    },
+
+    // Validate sprint reps
+    validateSprint: function(value, fieldName) {
+      if (!value || value.trim() === '') {
+        return { valid: true }; // Allow empty (optional field)
+      }
+
+      const num = parseFloat(value);
+      
+      if (isNaN(num)) {
+        return { 
+          valid: false, 
+          error: `${fieldName} must be a valid number` 
+        };
+      }
+
+      if (num < VALIDATION_RULES.sprint.min || num > VALIDATION_RULES.sprint.max) {
+        return { 
+          valid: false, 
+          error: `${fieldName}: ${VALIDATION_RULES.sprint.errorMsg}` 
+        };
+      }
+
+      // Check for reasonable decimal places (max 1)
+      if (num % 1 !== 0 && (num * 10) % 1 !== 0) {
+        return { 
+          valid: false, 
+          error: `${fieldName} can have at most 1 decimal place` 
+        };
+      }
+
+      return { valid: true };
+    },
+
+    // Validate date (#6)
+    validateDate: function(dateString) {
+      if (!dateString || dateString.trim() === '') {
+        return { valid: false, error: 'Date is required' };
+      }
+
+      // Check format YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return { valid: false, error: 'Date must be in YYYY-MM-DD format' };
+      }
+
+      const date = parseLocalDate(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return { valid: false, error: 'Invalid date' };
+      }
+
+      // Check if date is not in the future
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      
+      if (date > today) {
+        return { valid: false, error: 'Date cannot be in the future' };
+      }
+
+      // Check if date is not too far in the past (e.g., more than 5 years)
+      const fiveYearsAgo = new Date();
+      fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+      
+      if (date < fiveYearsAgo) {
+        return { valid: false, error: 'Date cannot be more than 5 years in the past' };
+      }
+
+      return { valid: true };
+    },
+
+    // Validate entire training form
+    validateTrainingForm: function(formData) {
+      const errors = [];
+
+      // Validate date
+      const dateValidation = this.validateDate(formData.date);
+      if (!dateValidation.valid) {
+        errors.push(dateValidation.error);
+      }
+
+      // Validate run time
+      const runTimeValidation = this.validateRunTime(formData.runTime);
+      if (!runTimeValidation.valid) {
+        errors.push(runTimeValidation.error);
+      }
+
+      // Validate broad jumps
+      const jumpFields = [
+        { key: 'leftSingle', name: 'Left Single Jump' },
+        { key: 'rightSingle', name: 'Right Single Jump' },
+        { key: 'doubleSingle', name: 'Double Single Jump' },
+        { key: 'leftTriple', name: 'Left Triple Jump' },
+        { key: 'rightTriple', name: 'Right Triple Jump' },
+        { key: 'doubleTriple', name: 'Double Triple Jump' }
+      ];
+
+      jumpFields.forEach(field => {
+        const validation = this.validateBroadJump(formData[field.key], field.name);
+        if (!validation.valid) {
+          errors.push(validation.error);
+        }
+      });
+
+      // Validate sprints
+      for (let i = 1; i <= 6; i++) {
+        const validation = this.validateSprint(formData[`sprint${i}`], `Sprint Set ${i}`);
+        if (!validation.valid) {
+          errors.push(validation.error);
+        }
+      }
+
+      // Check if at least one metric is filled
+      const hasRunTime = formData.runTime && formData.runTime.trim() !== '';
+      const hasJumps = jumpFields.some(field => formData[field.key] && formData[field.key].trim() !== '');
+      const hasSprints = Array.from({length: 6}, (_, i) => formData[`sprint${i + 1}`])
+        .some(sprint => sprint && sprint.trim() !== '');
+
+      if (!hasRunTime && !hasJumps && !hasSprints) {
+        errors.push('Please enter at least one metric (run time, jumps, or sprints)');
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors
+      };
+    },
+
+    // Validate player name
+    validatePlayerName: function(name) {
+      if (!name || name.trim() === '') {
+        return { valid: false, error: 'Player name is required' };
+      }
+
+      if (name.trim().length < 2) {
+        return { valid: false, error: 'Player name must be at least 2 characters' };
+      }
+
+      if (name.trim().length > 50) {
+        return { valid: false, error: 'Player name must be less than 50 characters' };
+      }
+
+      // Check for invalid characters
+      if (!/^[a-zA-Z0-9\s\-']+$/.test(name)) {
+        return { valid: false, error: 'Player name contains invalid characters' };
+      }
+
+      return { valid: true };
+    }
   };
 
-  const formatDateLong = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
-
+  // Export utilities
   window.utils = {
     validateRunTime,
     parseRunTime,
     formatRunTime,
     formatDate,
-    formatDateLong
+    formatDateLong,
+    getLocalDateString,
+    parseLocalDate,
+    compareDates,
+    isToday,
+    isThisWeek,
+    validators
   };
 
   // ========================================
-  // FIREBASE SERVICE (Keep existing)
+  // FIREBASE SERVICE
   // ========================================
   const firebaseService = {
     loadPlayers: async function() {
@@ -160,34 +431,34 @@
 
     // Track personal bests
     getPersonalBests: function(sessions) {
-  if (sessions.length === 0) return null;
+      if (sessions.length === 0) return null;
 
-  const validRunTimes = sessions
-    .filter(s => s.runTime && s.runTime.includes(':'))
-    .map(s => ({ time: parseRunTime(s.runTime), timeStr: s.runTime, date: s.date }))
-    .filter(s => s.time !== null)
-    .sort((a, b) => a.time - b.time);
+      const validRunTimes = sessions
+        .filter(s => s.runTime && s.runTime.includes(':'))
+        .map(s => ({ time: parseRunTime(s.runTime), timeStr: s.runTime, date: s.date }))
+        .filter(s => s.time !== null)
+        .sort((a, b) => a.time - b.time);
 
-  const getBest = (field) => sessions
-    .filter(s => s.broadJumps[field] > 0)
-    .map(s => ({ value: s.broadJumps[field], date: s.date }))
-    .sort((a, b) => b.value - a.value)[0];
+      const getBest = (field) => sessions
+        .filter(s => s.broadJumps[field] > 0)
+        .map(s => ({ value: s.broadJumps[field], date: s.date }))
+        .sort((a, b) => b.value - a.value)[0];
 
-  const allSprints = sessions
-    .flatMap(s => s.sprints.filter(sp => sp > 0).map(sp => ({ value: sp, date: s.date })))
-    .sort((a, b) => b.value - a.value);
+      const allSprints = sessions
+        .flatMap(s => s.sprints.filter(sp => sp > 0).map(sp => ({ value: sp, date: s.date })))
+        .sort((a, b) => b.value - a.value);
 
-  return {
-  bestRunTime: validRunTimes[0] || null,
-  bestLeftJump: getBest('leftSingle'),
-  bestRightJump: getBest('rightSingle'),
-  bestDoubleJump: getBest('doubleSingle'),
-  bestLeftTriple: getBest('leftTriple'),      // ADD THIS
-  bestRightTriple: getBest('rightTriple'),    // ADD THIS
-  bestDoubleTriple: getBest('doubleTriple'),  // ADD THIS
-  bestSprint: allSprints[0] || null
-};
-},
+      return {
+        bestRunTime: validRunTimes[0] || null,
+        bestLeftJump: getBest('leftSingle'),
+        bestRightJump: getBest('rightSingle'),
+        bestDoubleJump: getBest('doubleSingle'),
+        bestLeftTriple: getBest('leftTriple'),
+        bestRightTriple: getBest('rightTriple'),
+        bestDoubleTriple: getBest('doubleTriple'),
+        bestSprint: allSprints[0] || null
+      };
+    },
 
     // Calculate performance trends
     calculateTrend: function(recent, all, metric) {
@@ -378,10 +649,10 @@
       return { score: finalScore, rating, color, components };
     },
 
-    // Main insights calculation
-    calculateInsights: function(sessions, playerId) {
-      const allSessions = this.getPlayerSessions(sessions, playerId)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Main insights calculation - OPTIMIZED (#5)
+    calculateInsights: function(playerSessions, playerId) {
+      // playerSessions is already filtered, no need to filter again
+      const allSessions = playerSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
       
       if (allSessions.length === 0) {
         return {
@@ -460,21 +731,63 @@
     },
 
     getChartData: function(sessions, playerId) {
-      return this.getPlayerSessions(sessions, playerId)
-        .slice(0, 10)
-        .reverse()
-        .map(s => {
-          const runTimeSeconds = s.runTime && s.runTime.includes(':') ? parseRunTime(s.runTime) : null;
-          return {
-            date: formatDate(s.date),
-      runTime: s.runTime && s.runTime.includes(':') ? parseRunTime(s.runTime) : null,  // ADDED
-      sprint1: s.sprints[0] || 0,
-      sprint6: s.sprints[5] || 0,
-      leftJump: s.broadJumps.leftSingle,
-      rightJump: s.broadJumps.rightSingle
-          };
-        });
+  const playerSessions = this.getPlayerSessions(sessions, playerId)
+    .slice(-10);  // ← Change slice(0, 10) to slice(-10) to get last 10 sessions
+  
+  // Separate data arrays for each metric
+  const runTimeData = [];
+  const sprintData = [];
+  const singleJumpData = [];
+  const tripleJumpData = [];
+  
+  playerSessions.forEach(s => {
+    const date = formatDate(s.date);
+    
+    // Only include run time if recorded
+    if (s.runTime && s.runTime.includes(':')) {
+      const time = parseRunTime(s.runTime);
+      if (time !== null) {
+        runTimeData.push({ date, runTime: time });
+      }
     }
+    
+    // Only include sprints if both first and last are recorded
+    if (s.sprints[0] > 0 && s.sprints[5] > 0) {
+      sprintData.push({
+        date,
+        sprint1: s.sprints[0],
+        sprint6: s.sprints[5]
+      });
+    }
+    
+    // Only include single jumps if at least one is recorded
+    if (s.broadJumps.leftSingle > 0 || s.broadJumps.rightSingle > 0 || s.broadJumps.doubleSingle > 0) {
+      singleJumpData.push({
+        date,
+        leftJump: s.broadJumps.leftSingle || null,
+        rightJump: s.broadJumps.rightSingle || null,
+        doubleJump: s.broadJumps.doubleSingle || null
+      });
+    }
+    
+    // Only include triple jumps if at least one is recorded
+    if (s.broadJumps.leftTriple > 0 || s.broadJumps.rightTriple > 0 || s.broadJumps.doubleTriple > 0) {
+      tripleJumpData.push({
+        date,
+        leftTriple: s.broadJumps.leftTriple || null,
+        rightTriple: s.broadJumps.rightTriple || null,
+        doubleTriple: s.broadJumps.doubleTriple || null
+      });
+    }
+  });
+  
+  return {
+    runTime: runTimeData,
+    sprint: sprintData,
+    singleJump: singleJumpData,
+    tripleJump: tripleJumpData
+  };
+}
   };
 
   window.analyticsService = analyticsService;
