@@ -1,11 +1,10 @@
+
 // ========================================
 // COMBINED COMPONENTS FILE - COMPLETE VERSION
 // All React components in one file for better performance
 // Includes: Fixed Chart Memory Leaks (#1), Input Validation (#3), 
 //           Optimized Re-renders (#5), Date Handling (#6), Lazy Loading (#14)
 // ========================================
-
-const { useState, useEffect, useMemo } = React;
 
 // Fix icon components to return React elements
 const Activity = () => React.createElement('span', { role: 'img', 'aria-label': 'activity' }, '🏃');
@@ -52,7 +51,15 @@ class ErrorBoundary extends React.Component {
 // ========================================
 // NAVIGATION
 // ========================================
-const Navigation = ({ view, setView }) => {
+const Navigation = ({ view, setView, userRole }) => {
+  const handleLogout = async () => {
+    try {
+      await window.authService.logout();
+      window.location.reload();
+    } catch (error) {
+      alert('Error logging out: ' + error.message);
+    }
+  };
   return React.createElement('nav', null,
     React.createElement('div', { className: 'nav-container' }, [
       React.createElement('h1', { className: 'nav-title', key: 'title' }, [
@@ -60,21 +67,36 @@ const Navigation = ({ view, setView }) => {
         'Court Craft Tracker'
       ]),
       React.createElement('div', { className: 'nav-buttons', key: 'buttons' }, [
+  React.createElement('button', {
+    key: 'dashboard',
+    onClick: () => setView('dashboard'),
+    className: `nav-button ${view === 'dashboard' ? 'active' : ''}`
+  }, userRole === 'coach' ? 'Coach Dashboard' : 'My Dashboard'),
+  userRole === 'coach' && React.createElement('button', {
+    key: 'record',
+    onClick: () => setView('record'),
+    className: `nav-button ${view === 'record' ? 'active' : ''}`
+  }, 'Record Session'),
+  React.createElement('button', {
+    key: 'insights',
+    onClick: () => setView('insights'),
+    className: `nav-button ${view === 'insights' ? 'active' : ''}`
+  }, 'Insights'),
+React.createElement('button', {
+  key: 'history',
+  onClick: () => setView('history'),
+  className: `nav-button ${view === 'history' ? 'active' : ''}`
+}, 'History'),
         React.createElement('button', {
-          key: 'record',
-          onClick: () => setView('record'),
-          className: `nav-button ${view === 'record' ? 'active' : ''}`
-        }, 'Record Session'),
-        React.createElement('button', {
-          key: 'insights',
-          onClick: () => setView('insights'),
-          className: `nav-button ${view === 'insights' ? 'active' : ''}`
-        }, 'Insights'),
-        React.createElement('button', {
-          key: 'history',
-          onClick: () => setView('history'),
-          className: `nav-button ${view === 'history' ? 'active' : ''}`
-        }, 'History')
+  key: 'logout',
+  onClick: handleLogout,
+  className: 'nav-button',
+  style: { 
+    marginLeft: 'auto',
+    background: '#ef4444',
+    color: 'white'
+  }
+}, 'Logout')
       ])
     ])
   );
@@ -84,8 +106,8 @@ const Navigation = ({ view, setView }) => {
 // ADD PLAYER (Updated with validation #3)
 // ========================================
 const AddPlayer = ({ onPlayerAdded }) => {
-  const [newPlayerName, setNewPlayerName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newPlayerName, setNewPlayerName] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleAddPlayer = async () => {
     const validation = window.utils.validators.validatePlayerName(newPlayerName);
@@ -206,9 +228,9 @@ const RecentSessions = ({ sessions }) => {
 // TRAINING FORM (Updated with validation #3 and date handling #6)
 // ========================================
 const TrainingForm = ({ players, onSessionSaved }) => {
-  const [selectedPlayer, setSelectedPlayer] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [selectedPlayer, setSelectedPlayer] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [formData, setFormData] = React.useState({
     date: window.utils.getLocalDateString(), // Fixed date handling (#6)
     runTime: '',
     leftSingle: '', rightSingle: '', doubleSingle: '',
@@ -422,9 +444,9 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 // HISTORY VIEW (Updated with date handling #6)
 // ========================================
 const HistoryView = ({ players, sessions }) => {
-  const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [selectedPlayer, setSelectedPlayer] = React.useState('');
 
-  const filteredSessions = useMemo(() => {
+  const filteredSessions = React.useMemo(() => {
     if (!selectedPlayer) return sessions;
     return window.analyticsService.getPlayerSessions(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
@@ -1018,23 +1040,23 @@ const useChartJS = () => {
 // ENHANCED INSIGHTS VIEW (Optimized #5, Lazy Loading #14)
 // ========================================
 const InsightsView = ({ players, sessions }) => {
-  const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [selectedPlayer, setSelectedPlayer] = React.useState('');
   const { chartReady, chartError } = useChartJS(); // Lazy loading hook (#14)
 
   // Step 1: Filter player sessions (only recalculates when player changes or new sessions) (#5)
-  const playerSessions = useMemo(() => {
+  const playerSessions = React.useMemo(() => {
     if (!selectedPlayer) return [];
     return window.analyticsService.getPlayerSessions(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
 
   // Step 2: Calculate insights (only uses filtered sessions) (#5)
-  const insights = useMemo(() => {
+  const insights = React.useMemo(() => {
     if (!selectedPlayer || playerSessions.length === 0) return null;
     return window.analyticsService.calculateInsights(playerSessions, selectedPlayer);
   }, [selectedPlayer, playerSessions]);
 
   // Step 3: Prepare chart data (only recalculates when player sessions change) (#5)
-  const chartData = useMemo(() => {
+  const chartData = React.useMemo(() => {
     if (!selectedPlayer || playerSessions.length === 0) return [];
     return window.analyticsService.getChartData(playerSessions, selectedPlayer);
   }, [selectedPlayer, playerSessions]);

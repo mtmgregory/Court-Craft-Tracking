@@ -12,8 +12,10 @@ console.log('App loading...');
 const AthleteTracker = () => {
   const [players, setPlayers] = React.useState([]);
   const [sessions, setSessions] = React.useState([]);
-  const [view, setView] = React.useState('record');
+  const [view, setView] = React.useState('dashboard'); // Changed default
   const [loading, setLoading] = React.useState(true);
+  const [userRole, setUserRole] = React.useState(null);
+  const [userPlayerId, setUserPlayerId] = React.useState(null);
 
   React.useEffect(() => {
     console.log('Component mounted, loading data');
@@ -24,11 +26,21 @@ const AthleteTracker = () => {
   }, []);
 
   const loadData = async () => {
-    console.time('Data Load');
-    try {
-      // Wait for Firebase to be ready
-      let attempts = 0;
-      while (!window.db && attempts < 50) {
+  console.time('Data Load');
+  try {
+    // Get current user info FIRST
+    const currentUser = window.authService.getCurrentUser();
+    if (!currentUser.userData) {
+      throw new Error('User not authenticated');
+    }
+    
+    setUserRole(currentUser.userData.role);
+    setUserPlayerId(currentUser.userData.playerId);
+    console.log('User role:', currentUser.userData.role);
+    
+    // Wait for Firebase to be ready
+    let attempts = 0;
+    while (!window.db && attempts < 50) {
         await new Promise(resolve => setTimeout(resolve, 50));
         attempts++;
       }
@@ -36,7 +48,7 @@ const AthleteTracker = () => {
       if (!window.db) {
         throw new Error('Firebase not initialized');
       }
-
+      
       const [loadedPlayers, loadedSessions] = await Promise.all([
         window.firebaseService.loadPlayers(),
         window.firebaseService.loadSessions()
@@ -83,24 +95,47 @@ const AthleteTracker = () => {
   }
 
   return React.createElement('div', null, [
-    React.createElement(window.Components.Navigation, { view, setView, key: 'nav' }),
+  React.createElement(window.Components.Navigation, { 
+    view, 
+    setView, 
+    userRole,
+    key: 'nav' 
+  }),
     React.createElement('main', { key: 'main' },
-      view === 'record'
+  view === 'dashboard'
+    ? (userRole === 'coach'
+        ? React.createElement(window.CoachComponents.CoachView, {
+            players,
+            sessions
+          })
+        : React.createElement(window.PlayerComponents.PlayerView, {
+            players,
+            sessions
+          })
+      )
+    : view === 'record'
+    ? (userRole === 'coach'
         ? React.createElement(window.Components.RecordView, {
             players,
             sessions,
             onPlayerAdded: handlePlayerAdded,
             onSessionSaved: handleSessionSaved
           })
-        : view === 'insights'
-        ? React.createElement(window.Components.InsightsView, {
-            players,
-            sessions
-          })
-        : React.createElement(window.Components.HistoryView, {
-            players,
-            sessions
-          })
+        : React.createElement('div', { className: 'card' }, [
+            React.createElement('h2', { key: 'title' }, '🔒 Access Restricted'),
+            React.createElement('p', { key: 'msg', style: { color: '#6b7280', marginTop: '0.5rem' } }, 
+              'Only coaches can record new training sessions. Contact your coach to log your workouts.')
+          ])
+      )
+    : view === 'insights'
+    ? React.createElement(window.Components.InsightsView, {
+        players: userRole === 'coach' ? players : players.filter(p => p.id === userPlayerId),
+        sessions: userRole === 'coach' ? sessions : sessions.filter(s => s.playerId === userPlayerId)
+      })
+    : React.createElement(window.Components.HistoryView, {
+        players: userRole === 'coach' ? players : players.filter(p => p.id === userPlayerId),
+        sessions: userRole === 'coach' ? sessions : sessions.filter(s => s.playerId === userPlayerId)
+      })
     )
   ]);
 };
@@ -118,13 +153,17 @@ const initApp = async () => {
     const maxAttempts = 100;
     
     while (attempts < maxAttempts) {
-      const reactReady = window.React && window.ReactDOM;
-      const componentsReady = window.Components;
-      const servicesReady = window.firebaseService && window.analyticsService;
-      const utilsReady = window.utils;
-      const iconsReady = window.Icons;
-      
-      if (reactReady && componentsReady && servicesReady && utilsReady && iconsReady) {
+  const reactReady = window.React && window.ReactDOM;
+  const componentsReady = window.Components;
+  const servicesReady = window.firebaseService && window.analyticsService;
+  const utilsReady = window.utils;
+  const iconsReady = window.Icons;
+  const authReady = window.authService && window.AuthComponents; // ← NEW
+  const roleReady = window.roleManager; // ← NEW
+  const dashboardsReady = window.CoachComponents && window.PlayerComponents; // ← NEW
+  
+  if (reactReady && componentsReady && servicesReady && utilsReady && iconsReady && 
+      authReady && roleReady && dashboardsReady) { // ← UPDATED
         console.log('All dependencies ready');
         break;
       }
@@ -148,10 +187,12 @@ const initApp = async () => {
     
     const root = ReactDOM.createRoot(rootElement);
     root.render(
-      React.createElement(window.Components.ErrorBoundary, null,
-        React.createElement(AthleteTracker)
-      )
-    );
+  React.createElement(window.Components.ErrorBoundary, null,
+    React.createElement(window.AuthComponents.AuthWrapper, null,
+      React.createElement(AthleteTracker)
+    )
+  )
+);
     
     console.timeEnd('Total Load Time');
     console.log('✅ App initialized successfully');

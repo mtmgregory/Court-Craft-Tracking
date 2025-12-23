@@ -779,3 +779,30 @@ label {
         background: white;
     }
 }
+
+/* ========================================
+   USER BADGE
+   ======================================== */
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   RESPONSIVE AUTH STYLES
+   ======================================== */
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 1.5rem;
+    }
+    
+    .role-selector {
+        grid-template-columns: 1fr;
+    }
+}

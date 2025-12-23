@@ -1,0 +1,98 @@
+coach-dashboard.js
+
+// ========================================
+// COACH MAIN VIEW
+// ========================================
+const CoachView = ({ players, sessions }) => {
+  const [selectedView, setSelectedView] = React.useState('overview'); // overview, progress, alerts, participation, leaderboard
+
+  return React.createElement('div', { className: 'space-y-6' }, [
+    // View Selector
+    React.createElement('div', {
+      key: 'selector',
+      className: 'card'
+    }, [
+      React.createElement('div', {
+        key: 'buttons',
+        style: {
+          display: 'flex',
+          gap: '0.5rem',
+          flexWrap: 'wrap'
+        }
+      }, [
+        React.createElement('button', {
+          key: 'overview',
+          onClick: () => setSelectedView('overview'),
+          className: `btn ${selectedView === 'overview' ? 'btn-primary' : 'btn-secondary'}`,
+          style: { minWidth: '120px' }
+        }, '📊 Overview'),
+        React.createElement('button', {
+          key: 'progress',
+          onClick: () => setSelectedView('progress'),
+          className: `btn ${selectedView === 'progress' ? 'btn-primary' : 'btn-secondary'}`,
+          style: { minWidth: '120px' }
+        }, '📈 Progress'),
+        React.createElement('button', {
+          key: 'alerts',
+          onClick: () => setSelectedView('alerts'),
+          className: `btn ${selectedView === 'alerts' ? 'btn-primary' : 'btn-secondary'}`,
+          style: { minWidth: '120px' }
+        }, '🔔 Alerts'),
+        React.createElement('button', {
+          key: 'participation',
+          onClick: () => setSelectedView('participation'),
+          className: `btn ${selectedView === 'participation' ? 'btn-primary' : 'btn-secondary'}`,
+          style: { minWidth: '120px' }
+        }, '📅 Participation'),
+        React.createElement('button', {
+          key: 'leaderboard',
+          onClick: () => setSelectedView('leaderboard'),
+          className: `btn ${selectedView === 'leaderboard' ? 'btn-primary' : 'btn-secondary'}`,
+          style: { minWidth: '120px' }
+        }, '🏆 Leaderboard')
+      ])
+    ]),
+
+    // Content based on selected view
+    selectedView === 'overview' && React.createElement(TeamOverview, {
+      key: 'overview',
+      players,
+      sessions
+    }),
+
+    selectedView === 'progress' && React.createElement(window.CoachComponents.ProgressTracking, {
+      key: 'progress',
+      players,
+      sessions
+    }),
+
+    selectedView === 'alerts' && React.createElement(window.CoachComponents.PerformanceAlerts, {
+      key: 'alerts',
+      players,
+      sessions
+    }),
+
+    selectedView === 'participation' && React.createElement(window.CoachComponents.ParticipationTracking, {
+      key: 'participation',
+      players,
+      sessions
+    }),
+
+    selectedView === 'leaderboard' && React.createElement(PersonalBestsLeaderboard, {
+      key: 'leaderboard',
+      players,
+      sessions
+    })
+  ]);
+};
+
+Index.html
+
+<!-- 7. Components -->
+    <script src="auth-ui.js"></script>
+    <script src="coach-dashboard.js"></script>
+    <script src="coach-progress-tracking.js"></script>
+    <script src="coach-alerts.js"></script>
+    <script src="coach-participation-tracking.js"></script>
+    <script src="player-dashboard.js"></script>
+    <script src="components.js"></script>

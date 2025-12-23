@@ -25,6 +25,155 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Auth Container */
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+        }
+
+        .auth-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .auth-form > div {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .auth-error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            border: 1px solid #fecaca;
+            margin-bottom: 1rem;
+        }
+
+        .auth-success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            border: 1px solid #a7f3d0;
+            margin-bottom: 1rem;
+        }
+
+        .auth-link {
+            background: none;
+            border: none;
+            color: #3b82f6;
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            text-align: center;
+            transition: color 0.2s;
+        }
+
+        .auth-link:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
+        .auth-link-primary {
+            background: none;
+            border: none;
+            color: #2563eb;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0;
+        }
+
+        .auth-link-primary:hover {
+            text-decoration: underline;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        /* Role Selector */
+        .role-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .role-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .role-option:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .role-option.active {
+            border-color: #2563eb;
+            background: #dbeafe;
+        }
+
+        .role-icon {
+            font-size: 2rem;
+        }
+        
+        /* User Badge */
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 0.875rem;
+        }
+        
+        /* Responsive Auth */
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 1.5rem;
+            }
+            
+            .role-selector {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     
     <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all'">
@@ -45,15 +194,12 @@
     <!-- 2. Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <!-- 3. Firebase Configuration -->
     <script src="firebase-config.js"></script>
     
-    <!-- 4. Chart.js - REMOVED FOR LAZY LOADING (#14) -->
-    <!-- Chart.js will be loaded dynamically when user views Insights -->
-    <!-- This reduces initial bundle size by ~186KB -->
-    
-    <!-- 5. Icons -->
+    <!-- 4. Icons -->
     <script>
         window.Icons = {
             Activity: () => '🏃',
@@ -61,26 +207,29 @@
             Calendar: () => '📅',
             TrendingUp: () => '📈'
         };
+        console.log('✅ Icons loaded');
     </script>
     
-    <!-- 6. Services -->
+    <!-- 5. Utilities & Services -->
     <script src="services-combined.js"></script>
     
-    <!-- 7. Components -->
-    <script src="components.js"></script>
+    <!-- 6. Authentication -->
+    <script src="auth-service.js"></script>
+    <script src="role-manager.js"></script>
     
-    <!-- 8. Debug Check -->
-    <script>
-      console.log('=== Checking Dependencies ===');
-      console.log('React:', typeof React);
-      console.log('ReactDOM:', typeof ReactDOM);
-      console.log('Chart.js:', typeof Chart, '(will load on-demand)');
-    </script>
-
-    <!-- 9. Main App -->
+    <!-- 7. Components -->
+<script src="auth-ui.js"></script>
+<script src="coach-dashboard.js"></script>
+<script src="coach-progress-tracking.js"></script>
+<script src="coach-alerts.js"></script>
+<script src="coach-participation-tracking.js"></script>
+<script src="player-dashboard.js"></script>
+<script src="components.js"></script>
+    
+    <!-- 8. Main App -->
     <script src="app.js"></script>
     
-    <!-- 10. Performance Monitor -->
+    <!-- 9. Performance Monitor -->
     <script>
         window.addEventListener('load', function() {
             if (window.performance) {

@@ -27,6 +27,8 @@
     try {
       // Initialize Firebase
       firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      window.auth = auth;
       
       // Initialize Firestore with settings for better performance
       const db = firebase.firestore();
