@@ -291,6 +291,85 @@
       };
     },
 
+    // Inside validators object, add:
+
+validateMatrixExercise: function(value, fieldName) {
+  if (!value || value.trim() === '') {
+    return { valid: true }; // Allow empty
+  }
+
+  const num = parseFloat(value);
+  
+  if (isNaN(num)) {
+    return { valid: false, error: `${fieldName} must be a valid number` };
+  }
+
+  if (num < 0 || num > 100) {
+    return { valid: false, error: `${fieldName} must be between 0 and 100` };
+  }
+
+  return { valid: true };
+},
+
+validateMatrixForm: function(formData) {
+  const errors = [];
+
+  // Validate date
+  const dateValidation = this.validateDate(formData.date);
+  if (!dateValidation.valid) {
+    errors.push(dateValidation.error);
+  }
+
+  // Validate all exercises
+  const exercises = [
+    'volleyFigure8', 'bounceFigure8', 'volleySideToSide',
+    'dropTargetBackhand', 'dropTargetForehand', 
+    'serviceBoxDriveForehand', 'serviceBoxDriveBackhand',
+    'cornerVolleys', 'beepTest', 'ballTransfer', 'slalom'
+  ];
+
+  exercises.forEach(ex => {
+    const validation = this.validateMatrixExercise(
+      formData[ex], 
+      this.getMatrixExerciseLabel(ex)
+    );
+    if (!validation.valid) {
+      errors.push(validation.error);
+    }
+  });
+
+  // Check at least one exercise filled
+  const hasData = exercises.some(ex => 
+    formData[ex] && formData[ex].trim() !== ''
+  );
+
+  if (!hasData) {
+    errors.push('Please enter at least one exercise score');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+},
+
+getMatrixExerciseLabel: function(key) {
+  const labels = {
+    volleyFigure8: 'Volley Figure 8',
+    bounceFigure8: 'Bounce Figure 8',
+    volleySideToSide: 'Volley Side to Side',
+    dropTargetBackhand: 'Drop Target Backhand',
+    dropTargetForehand: 'Drop Target Forehand',
+    serviceBoxDriveForehand: 'Service Box Drive Forehand',
+    serviceBoxDriveBackhand: 'Service Box Drive Backhand',
+    cornerVolleys: 'Corner Volleys',
+    beepTest: 'Beep Test',
+    ballTransfer: 'Ball Transfer',
+    slalom: 'Slalom'
+  };
+  return labels[key] || key;
+},
+
     // Validate player name
     validatePlayerName: function(name) {
       if (!name || name.trim() === '') {
@@ -311,6 +390,8 @@
       }
 
       return { valid: true };
+
+      
     }
   };
 
@@ -341,6 +422,7 @@
       return snapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name,
+        userId: doc.data().userId || null,
         createdAt: doc.data().createdAt
       }));
     },
@@ -361,6 +443,8 @@
         createdAt: doc.data().createdAt
       }));
     },
+
+    
 
     addPlayer: async function(name) {
       const db = window.db;
@@ -389,7 +473,42 @@
       };
       const docRef = await db.collection('training_sessions').add(session);
       return { id: docRef.id, ...session };
-    }
+    }, 
+    // Inside firebaseService object, add:
+
+loadMatrixSessions: async function() {
+  const db = window.db;
+  if (!db) throw new Error('Firebase not initialized');
+  
+  const snapshot = await db.collection('matrix_sessions')
+    .orderBy('date', 'desc')
+    .get();
+    
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    playerId: doc.data().playerId,
+    playerName: doc.data().playerName,
+    date: doc.data().date,
+    exercises: doc.data().exercises,
+    createdAt: doc.data().createdAt
+  }));
+},
+
+addMatrixSession: async function(sessionData) {
+  const db = window.db;
+  if (!db) throw new Error('Firebase not initialized');
+  
+  const session = {
+    playerId: sessionData.playerId,
+    playerName: sessionData.playerName,
+    date: sessionData.date,
+    exercises: sessionData.exercises,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  const docRef = await db.collection('matrix_sessions').add(session);
+  return { id: docRef.id, ...session };
+}
   };
 
   window.firebaseService = firebaseService;

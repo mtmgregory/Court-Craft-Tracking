@@ -319,6 +319,89 @@
       }
     },
 
+    // ========================================
+// COACH: LINK PLAYER RECORD TO USER ACCOUNT
+// ========================================
+linkPlayerToUserAccount: async function(playerId, userId) {
+  try {
+    const db = window.db;
+    
+    if (!this.isCoach()) {
+      throw new Error('Only coaches can link player records to user accounts');
+    }
+
+    // Verify player exists
+    const playerDoc = await db.collection('players').doc(playerId).get();
+    if (!playerDoc.exists) {
+      throw new Error('Player record not found');
+    }
+
+    // Verify user exists
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new Error('User account not found');
+    }
+
+    // Verify user is a player
+    if (userDoc.data().role !== 'player') {
+      throw new Error('Can only link to player accounts');
+    }
+
+    // Check if player is already linked to a DIFFERENT user
+    if (playerDoc.data().userId && playerDoc.data().userId !== userId) {
+      throw new Error('This player record is already linked to another user account');
+    }
+
+    // Check if user already has a DIFFERENT player record
+    if (userDoc.data().playerId && userDoc.data().playerId !== playerId) {
+      throw new Error('This user is already linked to a different player record');
+    }
+
+    // Link them together
+    await db.collection('players').doc(playerId).update({
+      userId: userId,
+      linkedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection('users').doc(userId).update({
+      playerId: playerId,
+      linkedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log('✅ Player linked to user account successfully');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Link player to user error:', error);
+    throw error;
+  }
+},
+
+// Get all registered player users (for coach to link)
+getRegisteredPlayerUsers: async function() {
+  try {
+    if (!this.isCoach()) {
+      throw new Error('Only coaches can access this');
+    }
+
+    const db = window.db;
+    const snapshot = await db.collection('users')
+      .where('role', '==', 'player')
+      .orderBy('displayName')
+      .get();
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      displayName: doc.data().displayName,
+      email: doc.data().email,
+      playerId: doc.data().playerId || null
+    }));
+  } catch (error) {
+    console.error('Error getting registered player users:', error);
+    throw error;
+  }
+},
+
     // REMOVED: findPlayerByName() - No longer needed with simplified approach
 
     isAuthenticated: function() {

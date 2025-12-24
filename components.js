@@ -1,9 +1,6 @@
-
 // ========================================
-// COMBINED COMPONENTS FILE - COMPLETE VERSION
-// All React components in one file for better performance
-// Includes: Fixed Chart Memory Leaks (#1), Input Validation (#3), 
-//           Optimized Re-renders (#5), Date Handling (#6), Lazy Loading (#14)
+// COMBINED COMPONENTS FILE - PART 1 OF 4
+// Icons, Error Boundary, Navigation, Basic Components
 // ========================================
 
 // Fix icon components to return React elements
@@ -67,36 +64,41 @@ const Navigation = ({ view, setView, userRole }) => {
         'Court Craft Tracker'
       ]),
       React.createElement('div', { className: 'nav-buttons', key: 'buttons' }, [
-  React.createElement('button', {
-    key: 'dashboard',
-    onClick: () => setView('dashboard'),
-    className: `nav-button ${view === 'dashboard' ? 'active' : ''}`
-  }, userRole === 'coach' ? 'Coach Dashboard' : 'My Dashboard'),
-  userRole === 'coach' && React.createElement('button', {
-    key: 'record',
-    onClick: () => setView('record'),
-    className: `nav-button ${view === 'record' ? 'active' : ''}`
-  }, 'Record Session'),
-  React.createElement('button', {
-    key: 'insights',
-    onClick: () => setView('insights'),
-    className: `nav-button ${view === 'insights' ? 'active' : ''}`
-  }, 'Insights'),
-React.createElement('button', {
-  key: 'history',
-  onClick: () => setView('history'),
-  className: `nav-button ${view === 'history' ? 'active' : ''}`
-}, 'History'),
         React.createElement('button', {
-  key: 'logout',
-  onClick: handleLogout,
-  className: 'nav-button',
-  style: { 
-    marginLeft: 'auto',
-    background: '#ef4444',
-    color: 'white'
-  }
-}, 'Logout')
+          key: 'dashboard',
+          onClick: () => setView('dashboard'),
+          className: `nav-button ${view === 'dashboard' ? 'active' : ''}`
+        }, userRole === 'coach' ? 'Coach Dashboard' : 'My Dashboard'),
+        userRole === 'coach' && React.createElement('button', {
+          key: 'record',
+          onClick: () => setView('record'),
+          className: `nav-button ${view === 'record' ? 'active' : ''}`
+        }, 'Record Session'),
+        userRole === 'coach' && React.createElement('button', {
+          key: 'record-matrix',
+          onClick: () => setView('record-matrix'),
+          className: `nav-button ${view === 'record-matrix' ? 'active' : ''}`
+        }, 'Record Matrix'),
+        React.createElement('button', {
+          key: 'insights',
+          onClick: () => setView('insights'),
+          className: `nav-button ${view === 'insights' ? 'active' : ''}`
+        }, 'Insights'),
+        React.createElement('button', {
+          key: 'history',
+          onClick: () => setView('history'),
+          className: `nav-button ${view === 'history' ? 'active' : ''}`
+        }, 'History'),
+        React.createElement('button', {
+          key: 'logout',
+          onClick: handleLogout,
+          className: 'nav-button',
+          style: { 
+            marginLeft: 'auto',
+            background: '#ef4444',
+            color: 'white'
+          }
+        }, 'Logout')
       ])
     ])
   );
@@ -159,11 +161,69 @@ const AddPlayer = ({ onPlayerAdded }) => {
 };
 
 // ========================================
-// PLAYER LIST
+// PLAYER LIST (WITH COACH LINKING)
 // ========================================
 const PlayerList = ({ players, sessions }) => {
+  const [showLinkDialog, setShowLinkDialog] = React.useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = React.useState(null);
+  const [registeredUsers, setRegisteredUsers] = React.useState([]);
+  const [selectedUserId, setSelectedUserId] = React.useState('');
+  const [isLinking, setIsLinking] = React.useState(false);
+  const [linkError, setLinkError] = React.useState('');
+  const [linkSuccess, setLinkSuccess] = React.useState('');
+
+  const userRole = window.authService.currentUserData?.role;
+  const isCoach = userRole === 'coach';
+
   const getPlayerSessionCount = (playerId) => {
     return sessions.filter(s => s.playerId === playerId).length;
+  };
+
+  const getPlayerStatus = (player) => {
+    if (player.userId) {
+      return { text: '✅ Linked', color: '#10b981' };
+    }
+    return { text: '⚪ Not Linked', color: '#6b7280' };
+  };
+
+  const handleLinkClick = async (playerId) => {
+    setSelectedPlayerId(playerId);
+    setLinkError('');
+    setLinkSuccess('');
+    setSelectedUserId('');
+    
+    try {
+      const users = await window.authService.getRegisteredPlayerUsers();
+      setRegisteredUsers(users);
+      setShowLinkDialog(true);
+    } catch (error) {
+      alert('Error loading registered users: ' + error.message);
+    }
+  };
+
+  const handleLinkSubmit = async () => {
+    if (!selectedUserId) {
+      setLinkError('Please select a user account');
+      return;
+    }
+
+    setIsLinking(true);
+    setLinkError('');
+    setLinkSuccess('');
+
+    try {
+      await window.authService.linkPlayerToUserAccount(selectedPlayerId, selectedUserId);
+      setLinkSuccess('✅ Successfully linked player to user account!');
+      
+      setTimeout(() => {
+        setShowLinkDialog(false);
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      setLinkError(error.message);
+    } finally {
+      setIsLinking(false);
+    }
   };
 
   return React.createElement('div', { className: 'card' }, [
@@ -176,18 +236,189 @@ const PlayerList = ({ players, sessions }) => {
         ? React.createElement('p', {
             className: 'text-gray-500 text-center py-8 col-span-2'
           }, 'No players added yet')
-        : players.map(player =>
-            React.createElement('div', {
+        : players.map(player => {
+            const status = getPlayerStatus(player);
+            return React.createElement('div', {
               key: player.id,
-              className: 'player-card'
+              className: 'player-card',
+              style: {
+                borderLeft: `4px solid ${status.color}`
+              }
             }, [
-              React.createElement('p', { className: 'player-name', key: 'name' }, player.name),
-              React.createElement('p', { className: 'player-sessions', key: 'sessions' },
-                `${getPlayerSessionCount(player.id)} sessions`
-              )
-            ])
-          )
-    )
+              React.createElement('div', {
+                key: 'header',
+                style: {
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '0.5rem'
+                }
+              }, [
+                React.createElement('div', { key: 'info' }, [
+                  React.createElement('p', { className: 'player-name', key: 'name' }, player.name),
+                  React.createElement('p', { className: 'player-sessions', key: 'sessions' },
+                    `${getPlayerSessionCount(player.id)} sessions`
+                  )
+                ]),
+                React.createElement('span', {
+                  key: 'status',
+                  style: {
+                    fontSize: '0.75rem',
+                    color: status.color,
+                    fontWeight: '600'
+                  }
+                }, status.text)
+              ]),
+              isCoach && React.createElement('button', {
+                key: 'link-btn',
+                onClick: () => handleLinkClick(player.id),
+                className: 'btn btn-secondary',
+                style: {
+                  width: '100%',
+                  marginTop: '0.5rem',
+                  fontSize: '0.75rem',
+                  padding: '0.375rem 0.5rem'
+                }
+              }, player.userId ? 'Change Link' : '🔗 Link to User')
+            ]);
+          })
+    ),
+
+    // Link Dialog Modal
+    showLinkDialog && React.createElement('div', {
+      key: 'modal',
+      style: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem'
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget) setShowLinkDialog(false);
+      }
+    }, [
+      React.createElement('div', {
+        key: 'dialog',
+        style: {
+          background: 'white',
+          padding: '1.5rem',
+          borderRadius: '1rem',
+          maxWidth: '500px',
+          width: '100%',
+          maxHeight: '80vh',
+          overflow: 'auto'
+        }
+      }, [
+        React.createElement('h3', {
+          key: 'title',
+          style: {
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            marginBottom: '1rem'
+          }
+        }, '🔗 Link Player to User Account'),
+
+        React.createElement('p', {
+          key: 'desc',
+          style: {
+            fontSize: '0.875rem',
+            color: '#6b7280',
+            marginBottom: '1rem',
+            lineHeight: '1.5'
+          }
+        }, `Select a registered user account to link with ${players.find(p => p.id === selectedPlayerId)?.name || 'this player'}.`),
+
+        linkError && React.createElement('div', {
+          key: 'error',
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '0.75rem',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem'
+          }
+        }, linkError),
+
+        linkSuccess && React.createElement('div', {
+          key: 'success',
+          style: {
+            background: '#d1fae5',
+            color: '#065f46',
+            padding: '0.75rem',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            fontSize: '0.875rem'
+          }
+        }, linkSuccess),
+
+        React.createElement('div', {
+          key: 'form',
+          style: { marginBottom: '1rem' }
+        }, [
+          React.createElement('label', {
+            key: 'label',
+            style: {
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              marginBottom: '0.5rem'
+            }
+          }, 'Select User Account:'),
+          React.createElement('select', {
+            key: 'select',
+            value: selectedUserId,
+            onChange: (e) => setSelectedUserId(e.target.value),
+            disabled: isLinking,
+            style: {
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem'
+            }
+          }, [
+            React.createElement('option', { key: 'default', value: '' }, 'Choose a user...'),
+            ...registeredUsers.map(user =>
+              React.createElement('option', {
+                key: user.id,
+                value: user.id,
+                disabled: user.playerId && user.playerId !== selectedPlayerId
+              }, `${user.displayName} (${user.email})${user.playerId ? ' - Already linked' : ''}`)
+            )
+          ])
+        ]),
+
+        React.createElement('div', {
+          key: 'buttons',
+          style: {
+            display: 'flex',
+            gap: '0.5rem',
+            justifyContent: 'flex-end'
+          }
+        }, [
+          React.createElement('button', {
+            key: 'cancel',
+            onClick: () => setShowLinkDialog(false),
+            className: 'btn btn-secondary',
+            disabled: isLinking
+          }, 'Cancel'),
+          React.createElement('button', {
+            key: 'submit',
+            onClick: handleLinkSubmit,
+            className: 'btn btn-primary',
+            disabled: isLinking || !selectedUserId
+          }, isLinking ? 'Linking...' : 'Link Account')
+        ])
+      ])
+    ])
   ]);
 };
 
@@ -224,6 +455,12 @@ const RecentSessions = ({ sessions }) => {
   ]);
 };
 
+
+// ========================================
+// COMBINED COMPONENTS FILE - PART 2 OF 4
+// Training Form and History View
+// ========================================
+
 // ========================================
 // TRAINING FORM (Updated with validation #3 and date handling #6)
 // ========================================
@@ -231,7 +468,7 @@ const TrainingForm = ({ players, onSessionSaved }) => {
   const [selectedPlayer, setSelectedPlayer] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formData, setFormData] = React.useState({
-    date: window.utils.getLocalDateString(), // Fixed date handling (#6)
+    date: window.utils.getLocalDateString(),
     runTime: '',
     leftSingle: '', rightSingle: '', doubleSingle: '',
     leftTriple: '', rightTriple: '', doubleTriple: '',
@@ -241,7 +478,7 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 
   const resetForm = () => {
     setFormData({
-      date: window.utils.getLocalDateString(), // Fixed date handling (#6)
+      date: window.utils.getLocalDateString(),
       runTime: '',
       leftSingle: '', rightSingle: '', doubleSingle: '',
       leftTriple: '', rightTriple: '', doubleTriple: '',
@@ -256,7 +493,6 @@ const TrainingForm = ({ players, onSessionSaved }) => {
       return;
     }
 
-    // Use the new validation system (#3)
     const validation = window.utils.validators.validateTrainingForm(formData);
     
     if (!validation.valid) {
@@ -441,15 +677,20 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 };
 
 // ========================================
-// HISTORY VIEW (Updated with date handling #6)
+// HISTORY VIEW (Updated with date handling #6 and Matrix Sessions)
 // ========================================
-const HistoryView = ({ players, sessions }) => {
+const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
   const [selectedPlayer, setSelectedPlayer] = React.useState('');
 
   const filteredSessions = React.useMemo(() => {
     if (!selectedPlayer) return sessions;
     return window.analyticsService.getPlayerSessions(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
+
+  const filteredMatrixSessions = React.useMemo(() => {
+    if (!selectedPlayer) return matrixSessions;
+    return matrixSessions.filter(s => s.playerId === selectedPlayer);
+  }, [selectedPlayer, matrixSessions]);
 
   return React.createElement('div', { className: 'card' }, [
     React.createElement('h2', { className: 'section-header', key: 'header' }, 'Training History'),
@@ -465,7 +706,7 @@ const HistoryView = ({ players, sessions }) => {
         )
       ])
     ),
-    React.createElement('div', { className: 'space-y-4 overflow-auto max-h-600', key: 'list' },
+    React.createElement('div', { className: 'space-y-4 overflow-auto max-h-600', key: 'list' }, [
       filteredSessions.length === 0
         ? React.createElement('p', {
             className: 'text-gray-500 text-center py-8'
@@ -481,7 +722,7 @@ const HistoryView = ({ players, sessions }) => {
                     key: 'name'
                   }, session.playerName),
                   React.createElement('p', { className: 'session-date', key: 'date' },
-                    window.utils.formatDateLong(session.date) // Fixed date handling (#6)
+                    window.utils.formatDateLong(session.date)
                   )
                 ]),
                 React.createElement('div', { key: 'time' }, [
@@ -523,10 +764,100 @@ const HistoryView = ({ players, sessions }) => {
                 ])
               ])
             ])
+          ),
+      
+      // Matrix Sessions Section
+      filteredMatrixSessions.length > 0 && React.createElement('div', { 
+        key: 'matrix-sessions',
+        style: { marginTop: '2rem' }
+      }, [
+        React.createElement('h3', {
+          key: 'header',
+          style: {
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            marginBottom: '1rem',
+            color: '#374151'
+          }
+        }, '🎯 Matrix Sessions'),
+        React.createElement('div', { className: 'space-y-4', key: 'list' },
+          filteredMatrixSessions.map(session =>
+            React.createElement('div', { key: session.id, className: 'history-detail' }, [
+              // Header
+              React.createElement('div', { className: 'session-header mb-4', key: 'header' }, [
+                React.createElement('div', { key: 'info' }, [
+                  React.createElement('h3', {
+                    className: 'session-player',
+                    style: { fontSize: '1.125rem' },
+                    key: 'name'
+                  }, session.playerName),
+                  React.createElement('p', { className: 'session-date', key: 'date' },
+                    window.utils.formatDateLong(session.date)
+                  )
+                ]),
+                React.createElement('span', {
+                  key: 'badge',
+                  style: {
+                    background: '#3b82f6',
+                    color: 'white',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }
+                }, '🎯 Matrix')
+              ]),
+              
+              // Exercise Scores Grid
+              React.createElement('div', {
+                key: 'exercises',
+                style: {
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '0.75rem'
+                }
+              }, Object.entries(session.exercises).map(([key, value]) =>
+                React.createElement('div', {
+                  key,
+                  style: {
+                    background: '#f9fafb',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #e5e7eb'
+                  }
+                }, [
+                  React.createElement('p', {
+                    key: 'label',
+                    style: {
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      marginBottom: '0.25rem'
+                    }
+                  }, window.utils.validators.getMatrixExerciseLabel(key)),
+                  React.createElement('p', {
+                    key: 'value',
+                    style: {
+                      fontSize: '1.25rem',
+                      fontWeight: 'bold',
+                      color: value > 0 ? '#2563eb' : '#9ca3af',
+                      fontFamily: 'monospace'
+                    }
+                  }, value > 0 ? value : '-')
+                ])
+              ))
+            ])
           )
-    )
+        )
+      ])
+    ])
   ]);
 };
+
+
+// ========================================
+// COMBINED COMPONENTS FILE - PART 3 OF 4
+// Chart Components and Chart.js Lazy Loading
+// ========================================
 
 // ========================================
 // CHART COMPONENTS (Fixed memory leaks #1)
@@ -561,7 +892,7 @@ const ChartComponent = ({ type, data, options }) => {
         chartInstanceRef.current = null;
       }
     };
-  }, [type, data, options]); // Recreate chart when data changes
+  }, [type, data, options]);
 
   return React.createElement('canvas', { ref: canvasRef });
 };
@@ -874,6 +1205,7 @@ const JumpChart = ({ chartData }) => {
   );
 };
 
+// Triple Jump Chart Component
 const TripleJumpChart = ({ chartData }) => {
   const tripleData = React.useMemo(() => 
     chartData.tripleJump || [],
@@ -1037,31 +1369,41 @@ const useChartJS = () => {
 };
 
 // ========================================
-// ENHANCED INSIGHTS VIEW (Optimized #5, Lazy Loading #14)
+// COMBINED COMPONENTS FILE - PART 4A OF 5
+// Insights View - First Half (Selection, Main Cards, Matrix Stats, Personal Bests)
 // ========================================
-const InsightsView = ({ players, sessions }) => {
-  const [selectedPlayer, setSelectedPlayer] = React.useState('');
-  const { chartReady, chartError } = useChartJS(); // Lazy loading hook (#14)
 
-  // Step 1: Filter player sessions (only recalculates when player changes or new sessions) (#5)
+// ========================================
+// ENHANCED INSIGHTS VIEW - PART 1
+// ========================================
+const InsightsView = ({ players, sessions, matrixSessions = [] }) => {
+  const [selectedPlayer, setSelectedPlayer] = React.useState('');
+  const { chartReady, chartError } = useChartJS();
+
+  // Step 1: Filter player sessions
   const playerSessions = React.useMemo(() => {
     if (!selectedPlayer) return [];
     return window.analyticsService.getPlayerSessions(sessions, selectedPlayer);
   }, [selectedPlayer, sessions]);
 
-  // Step 2: Calculate insights (only uses filtered sessions) (#5)
+  // Step 1b: Filter player matrix sessions
+  const playerMatrixSessions = React.useMemo(() => {
+    if (!selectedPlayer) return [];
+    return matrixSessions.filter(s => s.playerId === selectedPlayer);
+  }, [selectedPlayer, matrixSessions]);
+
+  // Step 2: Calculate insights
   const insights = React.useMemo(() => {
     if (!selectedPlayer || playerSessions.length === 0) return null;
     return window.analyticsService.calculateInsights(playerSessions, selectedPlayer);
   }, [selectedPlayer, playerSessions]);
 
-  // Step 3: Prepare chart data (only recalculates when player sessions change) (#5)
+  // Step 3: Prepare chart data
   const chartData = React.useMemo(() => {
     if (!selectedPlayer || playerSessions.length === 0) return [];
     return window.analyticsService.getChartData(playerSessions, selectedPlayer);
   }, [selectedPlayer, playerSessions]);
 
-  // Charts are ready when both loaded and window.Chart exists
   const hasCharts = chartReady && window.Chart;
 
   return React.createElement('div', { className: 'space-y-6' }, [
@@ -1084,7 +1426,7 @@ const InsightsView = ({ players, sessions }) => {
       ])
     ]),
 
-    // Main Insight Cards
+    // Main Insight Cards (4 cards only)
     selectedPlayer && insights && React.createElement('div', { className: 'grid-4', key: 'insights' }, [
       // Card 1: Total Sessions
       React.createElement('div', {
@@ -1189,6 +1531,94 @@ const InsightsView = ({ players, sessions }) => {
           }
         }, insights.qualityRating)
       ])
+    ]),
+
+    // Matrix Stats Card (separate, outside grid-4)
+    selectedPlayer && playerMatrixSessions.length > 0 && React.createElement('div', {
+      key: 'matrix-stats',
+      className: 'card'
+    }, [
+      React.createElement('h3', {
+        key: 'header',
+        className: 'section-header'
+      }, '🎯 Matrix Training Statistics'),
+      
+      React.createElement('div', {
+        key: 'grid',
+        style: {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: '1rem'
+        }
+      }, Object.keys(playerMatrixSessions[0].exercises).map(exerciseKey => {
+        const scores = playerMatrixSessions
+          .map(s => s.exercises[exerciseKey])
+          .filter(v => v > 0);
+        
+        if (scores.length === 0) return null;
+        
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const best = Math.max(...scores);
+        
+        return React.createElement('div', {
+          key: exerciseKey,
+          style: {
+            background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+            padding: '1rem',
+            borderRadius: '0.5rem',
+            border: '2px solid #3b82f6'
+          }
+        }, [
+          React.createElement('p', {
+            key: 'label',
+            style: {
+              fontSize: '0.75rem',
+              color: '#1e40af',
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            }
+          }, window.utils.validators.getMatrixExerciseLabel(exerciseKey)),
+          React.createElement('div', {
+            key: 'stats',
+            style: {
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }
+          }, [
+            React.createElement('div', { key: 'avg' }, [
+              React.createElement('p', {
+                key: 'label',
+                style: { fontSize: '0.75rem', color: '#6b7280' }
+              }, 'Avg'),
+              React.createElement('p', {
+                key: 'value',
+                style: {
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  fontFamily: 'monospace'
+                }
+              }, avg.toFixed(1))
+            ]),
+            React.createElement('div', { key: 'best' }, [
+              React.createElement('p', {
+                key: 'label',
+                style: { fontSize: '0.75rem', color: '#6b7280' }
+              }, 'Best'),
+              React.createElement('p', {
+                key: 'value',
+                style: {
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#2563eb',
+                  fontFamily: 'monospace'
+                }
+              }, best)
+            ])
+          ])
+        ]);
+      }).filter(Boolean))
     ]),
 
     // Personal Bests Section
@@ -1521,6 +1951,14 @@ const InsightsView = ({ players, sessions }) => {
       ])
     ]),
 
+// ========================================
+// COMBINED COMPONENTS FILE - PART 4B OF 5
+// Insights View - Second Half (Fatigue Analysis and Charts)
+// ========================================
+
+// CONTINUATION OF InsightsView from Part 4A
+// This section includes: Fatigue Analysis and Performance Trend Charts
+
     // Advanced Fatigue Analysis Section
     selectedPlayer && insights && insights.fatigueMetrics && React.createElement('div', { className: 'card', key: 'fatigue-analysis' }, [
       React.createElement('h3', { className: 'section-header', key: 'header' }, '⚡ Fatigue Analysis'),
@@ -1681,7 +2119,7 @@ const InsightsView = ({ players, sessions }) => {
       ])
     ]),
 
-    // Performance Trend Charts with Loading State (#14)
+    // Performance Trend Charts with Loading State
     selectedPlayer && chartData && React.createElement('div', { className: 'card', key: 'charts' }, [
       React.createElement('h3', { className: 'section-header', key: 'header' }, '📈 Performance Trends'),
       
@@ -1770,42 +2208,44 @@ const InsightsView = ({ players, sessions }) => {
         ]),
         
         // Jump Chart
-React.createElement('div', { style: { marginBottom: '2rem' }, key: 'jump-chart' }, [
-  React.createElement('h4', {
-    key: 'title',
-    style: { 
-      fontSize: '1rem', 
-      fontWeight: '600', 
-      marginBottom: '1rem', 
-      color: '#374151',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    }
-  }, [
-    React.createElement('span', { key: 'icon' }, '🦘'),
-    'Single Jump Performance (All Types)']),
-  React.createElement(JumpChart, { key: 'chart', chartData })
-]),
+        React.createElement('div', { style: { marginBottom: '2rem' }, key: 'jump-chart' }, [
+          React.createElement('h4', {
+            key: 'title',
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '🦘'),
+            'Single Jump Performance (All Types)'
+          ]),
+          React.createElement(JumpChart, { key: 'chart', chartData })
+        ]),
 
-// Triple Jump Chart - NEW
-React.createElement('div', { key: 'triple-jump-chart' }, [
-  React.createElement('h4', {
-    key: 'title',
-    style: { 
-      fontSize: '1rem', 
-      fontWeight: '600', 
-      marginBottom: '1rem', 
-      color: '#374151',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    }
-  }, [
-    React.createElement('span', { key: 'icon' }, '🦘🦘🦘'),
-    'Triple Jump Performance (All Types)']),
-  React.createElement(TripleJumpChart, { key: 'chart', chartData })
-])
+        // Triple Jump Chart
+        React.createElement('div', { key: 'triple-jump-chart' }, [
+          React.createElement('h4', {
+            key: 'title',
+            style: { 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem', 
+              color: '#374151',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }
+          }, [
+            React.createElement('span', { key: 'icon' }, '🦘🦘🦘'),
+            'Triple Jump Performance (All Types)'
+          ]),
+          React.createElement(TripleJumpChart, { key: 'chart', chartData })
+        ])
       ]
     ]),
 
@@ -1830,6 +2270,11 @@ React.createElement('div', { key: 'triple-jump-chart' }, [
     )
   ]);
 };
+
+// ========================================
+// COMBINED COMPONENTS FILE - PART 4C OF 5 (FINAL)
+// Record View and Component Exports
+// ========================================
 
 // ========================================
 // RECORD VIEW
@@ -1862,4 +2307,3 @@ window.Components = {
   RecordView
 };
 
-console.log('✅ Components loaded successfully');
