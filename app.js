@@ -108,39 +108,50 @@ const AthleteTracker = () => {
         ? (userRole === 'coach'
             ? React.createElement(window.CoachComponents.CoachView, {
                 players,
-                sessions
+                sessions,
+                matrixSessions
               })
             : React.createElement(window.PlayerComponents.PlayerView, {
                 players,
-                sessions
+                sessions,
+                matrixSessions
               })
           )
         : view === 'record'
-        ? (userRole === 'coach'
-            ? React.createElement(window.Components.RecordView, {
-                players,
-                sessions,
-                onPlayerAdded: handlePlayerAdded,
-                onSessionSaved: handleSessionSaved
-              })
-            : React.createElement('div', { className: 'card' }, [
-                React.createElement('h2', { key: 'title' }, '🔒 Access Restricted'),
-                React.createElement('p', { key: 'msg', style: { color: '#6b7280', marginTop: '0.5rem' } }, 
-                  'Only coaches can record new training sessions. Contact your coach to log your workouts.')
-              ])
-          )
+? React.createElement('div', { className: 'space-y-6' }, [
+    React.createElement(window.Components.TrainingForm, {
+      key: 'form',
+      players: userRole === 'coach' ? players : players.filter(p => p.id === userPlayerId),
+      onSessionSaved: handleSessionSaved,
+      userRole: userRole,
+      userPlayerId: userPlayerId
+    }),
+    userRole === 'coach' && React.createElement('div', { 
+      key: 'coach-section',
+      className: 'grid-2',
+      style: { gap: '1.5rem' }
+    }, [
+      React.createElement(window.Components.PlayerList, { 
+        key: 'list',
+        players, 
+        sessions 
+      }),
+      React.createElement(window.Components.RecentSessions, { 
+        key: 'recent',
+        sessions 
+      })
+    ])
+  ])
         : view === 'record-matrix'
-        ? (userRole === 'coach'
-            ? React.createElement(window.MatrixComponents.MatrixForm, {  // ✅ FIXED
-                players,
-                onSessionSaved: handleMatrixSessionSaved
-              })
-            : React.createElement('div', { className: 'card' }, [  // ✅ FIXED
-                React.createElement('h2', { key: 'title' }, '🔒 Access Restricted'),
-                React.createElement('p', { key: 'msg', style: { color: '#6b7280', marginTop: '0.5rem' } }, 
-                  'Only coaches can record matrix sessions. Contact your coach to log your workouts.')
-              ])
-          )
+? React.createElement('div', { className: 'space-y-6' }, [
+    React.createElement(window.MatrixComponents.MatrixForm, {
+      key: 'form',
+      players: userRole === 'coach' ? players : players.filter(p => p.id === userPlayerId),
+      onSessionSaved: handleMatrixSessionSaved,
+      userRole: userRole,
+      userPlayerId: userPlayerId
+    })
+  ])
         : view === 'insights'
         ? React.createElement(window.Components.InsightsView, {
             players: userRole === 'coach' ? players : players.filter(p => p.id === userPlayerId),

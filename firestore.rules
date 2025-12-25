@@ -29,39 +29,44 @@ service cloud.firestore {
         && value <= 60;
     }
     
-    // ✅ NEW: Matrix exercise validation
     function isValidMatrixExercise(value) {
       return value is number 
         && value >= 0 
         && value <= 100;
     }
     
+    function isCoach() {
+      return request.auth != null 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coach';
+    }
+    
     // ========================================
-    // USERS COLLECTION
-    // ========================================
-    match /users/{userId} {
-  // Allow user to read their own document OR coach to read any user
+// USERS COLLECTION
+// ========================================
+match /users/{userId} {
+  // Allow users to read their own document, coaches can read all
   allow read: if request.auth != null 
-    && (request.auth.uid == userId 
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coach');
+    && (request.auth.uid == userId || isCoach());
   
-  allow create: if request.auth != null
-    && request.auth.uid == userId
-    && request.resource.data.uid == userId
-    && request.resource.data.role in ['player', 'coach']
-    && request.resource.data.email is string
-    && request.resource.data.displayName is string;
-  
-  allow update: if request.auth != null
-    && (
-      // User can update their own lastLogin
-      (request.auth.uid == userId
-       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']))
-      // OR coach can update playerId and linkedAt for linking
-      || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coach'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerId', 'linkedAt']))
-    );
-}
+  // Allow users to get their own document even during initialization
+  allow get: if request.auth != null 
+    && request.auth.uid == userId;
+      
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role in ['player', 'coach']
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string;
+      
+      allow update: if request.auth != null
+        && (
+          (request.auth.uid == userId
+           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']))
+          || (isCoach()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerId', 'linkedAt']))
+        );
+    }
     
     // ========================================
     // PLAYERS COLLECTION
@@ -79,11 +84,14 @@ service cloud.firestore {
         );
       
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']);
+        && isCoach()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'userId', 'linkedAt']);
+      
+      allow delete: if request.auth != null && isCoach();
     }
     
     // ========================================
-    // TRAINING SESSIONS COLLECTION
+    // TRAINING SESSIONS COLLECTION - UPDATED
     // ========================================
     match /training_sessions/{sessionId} {
       allow read: if request.auth != null;
@@ -126,54 +134,110 @@ service cloud.firestore {
         && isValidSprint(request.resource.data.sprints[5])
         && request.resource.data.createdAt == request.time;
       
-      allow update, delete: if false;
-    }
-    
-    // ========================================
-    // MATRIX SESSIONS COLLECTION  ✅ FIXED
-    // ========================================
-    match /matrix_sessions/{sessionId} {
-      allow read: if request.auth != null;
-      
-      allow create: if request.auth != null
+      // ✅ NEW: Allow coaches to update sessions
+      allow update: if request.auth != null 
+        && isCoach()
+        && request.resource.data.playerId == resource.data.playerId
         && request.resource.data.keys().hasAll([
           'playerId', 
           'playerName', 
-          'date',
-          'exercises',
+          'date', 
+          'runTime',
+          'broadJumps',
+          'sprints',
           'createdAt'
         ])
-        && request.resource.data.playerId is string
-        && request.resource.data.playerName is string
-        && request.resource.data.date is string
-        && request.resource.data.exercises is map
-        && request.resource.data.exercises.keys().hasAll([
-          'volleyFigure8',
-          'bounceFigure8',
-          'volleySideToSide',
-          'dropTargetBackhand',
-          'dropTargetForehand',
-          'serviceBoxDriveForehand',
-          'serviceBoxDriveBackhand',
-          'cornerVolleys',
-          'beepTest',
-          'ballTransfer',
-          'slalom'
-        ])
-        && isValidMatrixExercise(request.resource.data.exercises.volleyFigure8)
-        && isValidMatrixExercise(request.resource.data.exercises.bounceFigure8)
-        && isValidMatrixExercise(request.resource.data.exercises.volleySideToSide)
-        && isValidMatrixExercise(request.resource.data.exercises.dropTargetBackhand)
-        && isValidMatrixExercise(request.resource.data.exercises.dropTargetForehand)
-        && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveForehand)
-        && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveBackhand)
-        && isValidMatrixExercise(request.resource.data.exercises.cornerVolleys)
-        && isValidMatrixExercise(request.resource.data.exercises.beepTest)
-        && isValidMatrixExercise(request.resource.data.exercises.ballTransfer)
-        && isValidMatrixExercise(request.resource.data.exercises.slalom)
-        && request.resource.data.createdAt == request.time;
+        && (request.resource.data.runTime == '' || isValidRunTime(request.resource.data.runTime))
+        && isValidBroadJump(request.resource.data.broadJumps.leftSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.rightSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.doubleSingle)
+        && isValidBroadJump(request.resource.data.broadJumps.leftTriple)
+        && isValidBroadJump(request.resource.data.broadJumps.rightTriple)
+        && isValidBroadJump(request.resource.data.broadJumps.doubleTriple)
+        && request.resource.data.sprints.size() == 6
+        && isValidSprint(request.resource.data.sprints[0])
+        && isValidSprint(request.resource.data.sprints[1])
+        && isValidSprint(request.resource.data.sprints[2])
+        && isValidSprint(request.resource.data.sprints[3])
+        && isValidSprint(request.resource.data.sprints[4])
+        && isValidSprint(request.resource.data.sprints[5]);
       
-      allow update, delete: if false;
+      // ✅ NEW: Allow coaches to delete sessions
+      allow delete: if request.auth != null && isCoach();
     }
+    
+    // ========================================
+    // MATRIX SESSIONS COLLECTION - UPDATED
+    // ========================================
+    // MATRIX SESSIONS COLLECTION - UPDATED
+match /matrix_sessions/{sessionId} {
+  allow read: if request.auth != null;
+  
+  allow create: if request.auth != null
+    && request.resource.data.keys().hasAll([
+      'playerId', 
+      'playerName', 
+      'date',
+      'exercises',
+      'createdAt'
+    ])
+    && request.resource.data.playerId is string
+    && request.resource.data.playerName is string
+    && request.resource.data.date is string
+    && request.resource.data.exercises is map
+    && request.resource.data.exercises.keys().hasAll([
+      'volleyFigure8',
+      'bounceFigure8',
+      'volleySideToSide',
+      'bounceSideToSide',  // ✅ ADD THIS
+      'dropTargetBackhand',
+      'dropTargetForehand',
+      'serviceBoxDriveForehand',
+      'serviceBoxDriveBackhand',
+      'cornerVolleys',
+      'beepTest',
+      'ballTransfer',
+      'slalom'
+    ])
+    && isValidMatrixExercise(request.resource.data.exercises.volleyFigure8)
+    && isValidMatrixExercise(request.resource.data.exercises.bounceFigure8)
+    && isValidMatrixExercise(request.resource.data.exercises.volleySideToSide)
+    && isValidMatrixExercise(request.resource.data.exercises.bounceSideToSide)  // ✅ ADD THIS
+    && isValidMatrixExercise(request.resource.data.exercises.dropTargetBackhand)
+    && isValidMatrixExercise(request.resource.data.exercises.dropTargetForehand)
+    && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveForehand)
+    && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveBackhand)
+    && isValidMatrixExercise(request.resource.data.exercises.cornerVolleys)
+    && isValidMatrixExercise(request.resource.data.exercises.beepTest)
+    && isValidMatrixExercise(request.resource.data.exercises.ballTransfer)
+    && isValidMatrixExercise(request.resource.data.exercises.slalom)
+    && request.resource.data.createdAt == request.time;
+  
+  // ✅ UPDATE: Allow coaches to update matrix sessions
+  allow update: if request.auth != null 
+    && isCoach()
+    && request.resource.data.playerId == resource.data.playerId
+    && request.resource.data.keys().hasAll([
+      'playerId', 
+      'playerName', 
+      'date',
+      'exercises',
+      'createdAt'
+    ])
+    && isValidMatrixExercise(request.resource.data.exercises.volleyFigure8)
+    && isValidMatrixExercise(request.resource.data.exercises.bounceFigure8)
+    && isValidMatrixExercise(request.resource.data.exercises.volleySideToSide)
+    && isValidMatrixExercise(request.resource.data.exercises.bounceSideToSide)  // ✅ ADD THIS
+    && isValidMatrixExercise(request.resource.data.exercises.dropTargetBackhand)
+    && isValidMatrixExercise(request.resource.data.exercises.dropTargetForehand)
+    && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveForehand)
+    && isValidMatrixExercise(request.resource.data.exercises.serviceBoxDriveBackhand)
+    && isValidMatrixExercise(request.resource.data.exercises.cornerVolleys)
+    && isValidMatrixExercise(request.resource.data.exercises.beepTest)
+    && isValidMatrixExercise(request.resource.data.exercises.ballTransfer)
+    && isValidMatrixExercise(request.resource.data.exercises.slalom);
+  
+  allow delete: if request.auth != null && isCoach();
+}
   }
 }

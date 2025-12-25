@@ -9,7 +9,7 @@ const { useState } = React;
 // LOGIN SCREEN
 // ========================================
 const LoginScreen = ({ onLogin, onSwitchToRegister, onForgotPassword }) => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('@gmail.com');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,7 +66,13 @@ const LoginScreen = ({ onLogin, onSwitchToRegister, onForgotPassword }) => {
             type: 'email',
             value: email,
             onChange: (e) => setEmail(e.target.value),
-            placeholder: 'your.email@example.com',
+            onFocus: (e) => {
+              // If field still contains default @gmail.com, select all for easy replacement
+              if (e.target.value === '@gmail.com') {
+                e.target.select();
+              }
+            },
+            placeholder: 'your.email@gmail.com',
             required: true,
             disabled: isLoading,
             autoComplete: 'email'

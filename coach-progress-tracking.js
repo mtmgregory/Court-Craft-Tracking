@@ -1,11 +1,13 @@
 // ========================================
 // COACH PROGRESS TRACKING COMPONENT
 // Monthly trend analysis for each player
+// NOW INCLUDES MATRIX SESSIONS
 // ========================================
 
-const ProgressTracking = ({ players, sessions }) => {
+const ProgressTracking = ({ players, sessions, matrixSessions = [] }) => {
   const [selectedPlayer, setSelectedPlayer] = React.useState('');
   const [selectedMetric, setSelectedMetric] = React.useState('runTime');
+  const [sessionType, setSessionType] = React.useState('traditional'); // 'traditional' or 'matrix'
 
   // MOVED: Define calculateMonthlyMetric BEFORE useMemo
   const calculateMonthlyMetric = (sessions, metric) => {
@@ -74,11 +76,27 @@ const ProgressTracking = ({ players, sessions }) => {
     return { value: null, formatted: 'N/A', trend: null };
   };
 
-  // Group sessions by month for selected player
+  const calculateMonthlyMatrixMetric = (sessions, metric) => {
+    const scores = sessions
+      .map(s => s.exercises[metric])
+      .filter(v => v > 0);
+    
+    if (scores.length === 0) return { value: null, formatted: 'N/A', trend: null };
+    
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return {
+      value: avg,
+      formatted: avg.toFixed(1),
+      trend: 'higher' // Higher is better for all matrix exercises
+    };
+  };
+
+  // Group sessions by month for selected player and type
   const monthlyData = React.useMemo(() => {
     if (!selectedPlayer) return [];
 
-    const playerSessions = sessions
+    const sourceSessions = sessionType === 'traditional' ? sessions : matrixSessions;
+    const playerSessions = sourceSessions
       .filter(s => s.playerId === selectedPlayer)
       .sort((a, b) => window.utils.compareDates(a.date, b.date));
 
@@ -100,7 +118,10 @@ const ProgressTracking = ({ players, sessions }) => {
 
     // Calculate averages for each month
     return Object.values(byMonth).map(monthData => {
-      const metric = calculateMonthlyMetric(monthData.sessions, selectedMetric);
+      const metric = sessionType === 'traditional' 
+        ? calculateMonthlyMetric(monthData.sessions, selectedMetric)
+        : calculateMonthlyMatrixMetric(monthData.sessions, selectedMetric);
+      
       return {
         month: monthData.month,
         label: monthData.label,
@@ -110,7 +131,7 @@ const ProgressTracking = ({ players, sessions }) => {
         trend: metric.trend
       };
     });
-  }, [selectedPlayer, selectedMetric, sessions]);
+  }, [selectedPlayer, selectedMetric, sessions, matrixSessions, sessionType]);
 
   const getTrendIndicator = (current, previous, trendType) => {
     if (!current || !previous || current === previous) return '→';
@@ -132,7 +153,7 @@ const ProgressTracking = ({ players, sessions }) => {
     }
   };
 
-  const metricOptions = [
+  const traditionalMetricOptions = [
     { value: 'runTime', label: '🏃 2km Run Time' },
     { value: 'leftSingle', label: '⬅️ Left Single Jump' },
     { value: 'rightSingle', label: '➡️ Right Single Jump' },
@@ -143,6 +164,23 @@ const ProgressTracking = ({ players, sessions }) => {
     { value: 'sprint', label: '⚡ Sprint Average' },
     { value: 'balance', label: '⚖️ Jump Balance' }
   ];
+
+  const matrixMetricOptions = [
+    { value: 'volleyFigure8', label: '🎯 Volley Figure 8' },
+    { value: 'bounceFigure8', label: '⚡ Bounce Figure 8' },
+    { value: 'volleySideToSide', label: '↔️ Volley Side to Side' },
+    { value: 'bounceSideToSide', label: '🔄 Bounce Side to Side' },
+    { value: 'dropTargetBackhand', label: '🎾 Drop Target Backhand' },
+    { value: 'dropTargetForehand', label: '🎾 Drop Target Forehand' },
+    { value: 'serviceBoxDriveForehand', label: '📦 Service Box Drive FH' },
+    { value: 'serviceBoxDriveBackhand', label: '📦 Service Box Drive BH' },
+    { value: 'cornerVolleys', label: '🔲 Corner Volleys' },
+    { value: 'beepTest', label: '⏱️ Beep Test' },
+    { value: 'ballTransfer', label: '🔄 Ball Transfer' },
+    { value: 'slalom', label: '🎿 Slalom' }
+  ];
+
+  const metricOptions = sessionType === 'traditional' ? traditionalMetricOptions : matrixMetricOptions;
 
   return React.createElement('div', { className: 'card' }, [
     React.createElement('h3', {
@@ -155,7 +193,7 @@ const ProgressTracking = ({ players, sessions }) => {
       key: 'controls',
       style: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1rem',
         marginBottom: '1.5rem'
       }
@@ -171,6 +209,21 @@ const ProgressTracking = ({ players, sessions }) => {
           ...players.map(p => 
             React.createElement('option', { key: p.id, value: p.id }, p.name)
           )
+        ])
+      ]),
+      React.createElement('div', { key: 'type' }, [
+        React.createElement('label', { key: 'label' }, 'Session Type'),
+        React.createElement('select', {
+          key: 'select',
+          value: sessionType,
+          onChange: (e) => {
+            setSessionType(e.target.value);
+            // Reset to first metric of new type
+            setSelectedMetric(e.target.value === 'traditional' ? 'runTime' : 'volleyFigure8');
+          }
+        }, [
+          React.createElement('option', { key: 'trad', value: 'traditional' }, '🏃 Traditional Training'),
+          React.createElement('option', { key: 'matrix', value: 'matrix' }, '🎯 Matrix Training')
         ])
       ]),
       React.createElement('div', { key: 'metric' }, [
@@ -275,11 +328,10 @@ const ProgressTracking = ({ players, sessions }) => {
         key: 'text',
         style: { fontWeight: '500' }
       }, selectedPlayer 
-        ? 'No training data available for this player' 
+        ? `No ${sessionType} training data available for this player` 
         : 'Select a player to view their progress')
     ])
   ]);
 };
 
 window.CoachComponents.ProgressTracking = ProgressTracking;
-console.log('✅ Progress Tracking Component loaded');

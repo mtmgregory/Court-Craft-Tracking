@@ -322,7 +322,7 @@ validateMatrixForm: function(formData) {
 
   // Validate all exercises
   const exercises = [
-    'volleyFigure8', 'bounceFigure8', 'volleySideToSide',
+    'volleyFigure8', 'bounceFigure8', 'volleySideToSide', 'bounceSideToSide', // ✅ ADDED bounceSideToSide
     'dropTargetBackhand', 'dropTargetForehand', 
     'serviceBoxDriveForehand', 'serviceBoxDriveBackhand',
     'cornerVolleys', 'beepTest', 'ballTransfer', 'slalom'
@@ -358,6 +358,7 @@ getMatrixExerciseLabel: function(key) {
     volleyFigure8: 'Volley Figure 8',
     bounceFigure8: 'Bounce Figure 8',
     volleySideToSide: 'Volley Side to Side',
+    bounceSideToSide: 'Bounce Side to Side',  // ✅ ADD THIS
     dropTargetBackhand: 'Drop Target Backhand',
     dropTargetForehand: 'Drop Target Forehand',
     serviceBoxDriveForehand: 'Service Box Drive Forehand',
@@ -472,7 +473,7 @@ getMatrixExerciseLabel: function(key) {
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       const docRef = await db.collection('training_sessions').add(session);
-      return { id: docRef.id, ...session };
+      return { id: docRef.id, ...session };     
     }, 
     // Inside firebaseService object, add:
 
@@ -483,6 +484,8 @@ loadMatrixSessions: async function() {
   const snapshot = await db.collection('matrix_sessions')
     .orderBy('date', 'desc')
     .get();
+  
+    
     
   return snapshot.docs.map(doc => ({
     id: doc.id,
@@ -492,6 +495,7 @@ loadMatrixSessions: async function() {
     exercises: doc.data().exercises,
     createdAt: doc.data().createdAt
   }));
+  
 },
 
 addMatrixSession: async function(sessionData) {
@@ -508,7 +512,65 @@ addMatrixSession: async function(sessionData) {
   
   const docRef = await db.collection('matrix_sessions').add(session);
   return { id: docRef.id, ...session };
-}
+}, 
+
+// Add these methods to the firebaseService object in services-combined.js
+// Place them before the closing brace of window.firebaseService = {...}
+
+    // ========================================
+    // UPDATE & DELETE METHODS
+    // ========================================
+    
+    updateSession: async function(sessionId, sessionData) {
+      const db = window.db;
+      if (!db) throw new Error('Firebase not initialized');
+      
+      const updateData = {
+        playerName: sessionData.playerName,
+        date: sessionData.date,
+        runTime: sessionData.runTime,
+        broadJumps: sessionData.broadJumps,
+        sprints: sessionData.sprints
+        // Note: Don't update playerId or createdAt
+      };
+      
+      await db.collection('training_sessions').doc(sessionId).update(updateData);
+      return { id: sessionId, ...sessionData };
+    },
+
+    deleteSession: async function(sessionId) {
+      const db = window.db;
+      if (!db) throw new Error('Firebase not initialized');
+      
+      await db.collection('training_sessions').doc(sessionId).delete();
+      return { id: sessionId, deleted: true };
+    },
+
+    updateMatrixSession: async function(sessionId, sessionData) {
+      const db = window.db;
+      if (!db) throw new Error('Firebase not initialized');
+      
+      const updateData = {
+        playerName: sessionData.playerName,
+        date: sessionData.date,
+        exercises: sessionData.exercises
+        // Note: Don't update playerId or createdAt
+      };
+      
+      await db.collection('matrix_sessions').doc(sessionId).update(updateData);
+      return { id: sessionId, ...sessionData };
+    },
+
+    deleteMatrixSession: async function(sessionId) {
+      const db = window.db;
+      if (!db) throw new Error('Firebase not initialized');
+      
+      await db.collection('matrix_sessions').doc(sessionId).delete();
+      return { id: sessionId, deleted: true };
+    }
+
+
+
   };
 
   window.firebaseService = firebaseService;

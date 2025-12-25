@@ -1,18 +1,25 @@
 // ========================================
 // PARTICIPATION TRACKING
 // Monitor who's training regularly for monthly testing
+// NOW INCLUDES MATRIX SESSIONS
 // ========================================
 
-const ParticipationTracking = ({ players, sessions }) => {
+const ParticipationTracking = ({ players, sessions, matrixSessions = [] }) => {
   const participationData = React.useMemo(() => {
     const today = new Date();
     
     return players.map(player => {
-      const playerSessions = sessions
-        .filter(s => s.playerId === player.id)
-        .sort((a, b) => window.utils.compareDates(b.date, a.date));
+      // Combine both types of sessions
+      const playerSessions = sessions.filter(s => s.playerId === player.id);
+      const playerMatrixSessions = matrixSessions.filter(s => s.playerId === player.id);
+      
+      // Merge and sort all sessions by date
+      const allPlayerSessions = [
+        ...playerSessions.map(s => ({ ...s, type: 'traditional' })),
+        ...playerMatrixSessions.map(s => ({ ...s, type: 'matrix' }))
+      ].sort((a, b) => window.utils.compareDates(b.date, a.date));
 
-      if (playerSessions.length === 0) {
+      if (allPlayerSessions.length === 0) {
         return {
           player: player.name,
           playerId: player.id,
@@ -20,11 +27,13 @@ const ParticipationTracking = ({ players, sessions }) => {
           lastSession: null,
           daysSince: null,
           sessionCount: 0,
-          recentCount: 0
+          recentCount: 0,
+          traditionalCount: 0,
+          matrixCount: 0
         };
       }
 
-      const lastSession = playerSessions[0];
+      const lastSession = allPlayerSessions[0];
       const lastDate = window.utils.parseLocalDate(lastSession.date);
       const daysSince = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
 
@@ -41,19 +50,23 @@ const ParticipationTracking = ({ players, sessions }) => {
       // Count recent sessions (last 90 days)
       const ninetyDaysAgo = new Date(today);
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      const recentCount = playerSessions.filter(s => {
+      
+      const recentSessions = allPlayerSessions.filter(s => {
         const date = window.utils.parseLocalDate(s.date);
         return date >= ninetyDaysAgo;
-      }).length;
+      });
 
       return {
         player: player.name,
         playerId: player.id,
         status,
         lastSession: lastSession.date,
+        lastSessionType: lastSession.type,
         daysSince,
-        sessionCount: playerSessions.length,
-        recentCount
+        sessionCount: allPlayerSessions.length,
+        recentCount: recentSessions.length,
+        traditionalCount: playerSessions.length,
+        matrixCount: playerMatrixSessions.length
       };
     }).sort((a, b) => {
       // Sort by status priority, then days since
@@ -66,7 +79,7 @@ const ParticipationTracking = ({ players, sessions }) => {
       if (b.daysSince === null) return 1;
       return b.daysSince - a.daysSince;
     });
-  }, [players, sessions]);
+  }, [players, sessions, matrixSessions]);
 
   const summary = React.useMemo(() => {
     return {
@@ -227,12 +240,12 @@ const ParticipationTracking = ({ players, sessions }) => {
       React.createElement('p', {
         key: 'title',
         style: { fontWeight: '600', marginBottom: '0.5rem' }
-      }, 'ℹ️ Status Definitions (Monthly Testing)'),
+      }, 'ℹ️ Status Definitions (Monthly Testing - includes Matrix sessions)'),
       React.createElement('ul', {
         key: 'list',
         style: { marginLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }
       }, [
-        React.createElement('li', { key: 'active' }, '✅ Active: Tested within 35 days'),
+        React.createElement('li', { key: 'active' }, '✅ Active: Tested within 35 days (traditional or matrix)'),
         React.createElement('li', { key: 'checkin' }, '⚠️ Needs Check-in: 35-65 days since last test'),
         React.createElement('li', { key: 'inactive' }, '🔴 Inactive: More than 65 days since last test'),
         React.createElement('li', { key: 'never' }, '❓ Never Trained: No sessions recorded')
@@ -275,7 +288,7 @@ const ParticipationTracking = ({ players, sessions }) => {
             style: { fontSize: '0.75rem', color: '#6b7280' }
           }, player.status === 'never' 
             ? 'No sessions recorded'
-            : `${player.sessionCount} total sessions • ${player.recentCount} in last 90 days`)
+            : `${player.sessionCount} total (${player.traditionalCount} traditional, ${player.matrixCount} matrix) • ${player.recentCount} in last 90 days`)
         ]),
         React.createElement('div', {
           key: 'status',
@@ -303,7 +316,15 @@ const ParticipationTracking = ({ players, sessions }) => {
             React.createElement('p', {
               key: 'label',
               style: { fontSize: '0.75rem', color: '#6b7280' }
-            }, 'days ago')
+            }, 'days ago'),
+            player.lastSessionType && React.createElement('p', {
+              key: 'type',
+              style: { 
+                fontSize: '0.65rem', 
+                color: '#6b7280',
+                marginTop: '0.125rem'
+              }
+            }, player.lastSessionType === 'matrix' ? '🎯 matrix' : '🏃 traditional')
           ]),
           React.createElement(StatusBadge, {
             key: 'badge',
@@ -316,4 +337,4 @@ const ParticipationTracking = ({ players, sessions }) => {
 };
 
 window.CoachComponents.ParticipationTracking = ParticipationTracking;
-console.log('✅ Participation Tracking Component loaded');
+console.log('✅ Participation Tracking Component loaded (with Matrix support)');

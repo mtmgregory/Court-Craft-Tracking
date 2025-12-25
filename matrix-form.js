@@ -3,14 +3,35 @@
 // Records skill-based matrix exercises
 // ========================================
 
-const MatrixForm = ({ players, onSessionSaved }) => {
-  const [selectedPlayer, setSelectedPlayer] = React.useState('');
+const MatrixForm = ({ players, onSessionSaved, userRole, userPlayerId }) => {
+  const [selectedPlayer, setSelectedPlayer] = React.useState(
+  userRole === 'player' ? userPlayerId : ''
+);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formData, setFormData] = React.useState({
+  date: window.utils.getLocalDateString(),
+  volleyFigure8: '',
+  bounceFigure8: '',
+  volleySideToSide: '',
+  bounceSideToSide: '',  // ✅ ADD THIS
+  dropTargetBackhand: '',
+  dropTargetForehand: '',
+  serviceBoxDriveForehand: '',
+  serviceBoxDriveBackhand: '',
+  cornerVolleys: '',
+  beepTest: '',
+  ballTransfer: '',
+  slalom: ''
+});
+
+
+  const resetForm = () => {
+  setFormData({
     date: window.utils.getLocalDateString(),
     volleyFigure8: '',
     bounceFigure8: '',
     volleySideToSide: '',
+    bounceSideToSide: '',  // ✅ ADD THIS
     dropTargetBackhand: '',
     dropTargetForehand: '',
     serviceBoxDriveForehand: '',
@@ -20,23 +41,7 @@ const MatrixForm = ({ players, onSessionSaved }) => {
     ballTransfer: '',
     slalom: ''
   });
-
-  const resetForm = () => {
-    setFormData({
-      date: window.utils.getLocalDateString(),
-      volleyFigure8: '',
-      bounceFigure8: '',
-      volleySideToSide: '',
-      dropTargetBackhand: '',
-      dropTargetForehand: '',
-      serviceBoxDriveForehand: '',
-      serviceBoxDriveBackhand: '',
-      cornerVolleys: '',
-      beepTest: '',
-      ballTransfer: '',
-      slalom: ''
-    });
-  };
+};
 
   const handleSubmit = async () => {
     if (!selectedPlayer) {
@@ -57,23 +62,24 @@ const MatrixForm = ({ players, onSessionSaved }) => {
     setIsSubmitting(true);
 
     const session = {
-      playerId: selectedPlayer,
-      playerName: players.find(p => p.id === selectedPlayer)?.name,
-      date: formData.date,
-      exercises: {
-        volleyFigure8: parseFloat(formData.volleyFigure8) || 0,
-        bounceFigure8: parseFloat(formData.bounceFigure8) || 0,
-        volleySideToSide: parseFloat(formData.volleySideToSide) || 0,
-        dropTargetBackhand: parseFloat(formData.dropTargetBackhand) || 0,
-        dropTargetForehand: parseFloat(formData.dropTargetForehand) || 0,
-        serviceBoxDriveForehand: parseFloat(formData.serviceBoxDriveForehand) || 0,
-        serviceBoxDriveBackhand: parseFloat(formData.serviceBoxDriveBackhand) || 0,
-        cornerVolleys: parseFloat(formData.cornerVolleys) || 0,
-        beepTest: parseFloat(formData.beepTest) || 0,
-        ballTransfer: parseFloat(formData.ballTransfer) || 0,
-        slalom: parseFloat(formData.slalom) || 0
-      }
-    };
+  playerId: selectedPlayer,
+  playerName: players.find(p => p.id === selectedPlayer)?.name,
+  date: formData.date,
+  exercises: {
+    volleyFigure8: parseFloat(formData.volleyFigure8) || 0,
+    bounceFigure8: parseFloat(formData.bounceFigure8) || 0,
+    volleySideToSide: parseFloat(formData.volleySideToSide) || 0,
+    bounceSideToSide: parseFloat(formData.bounceSideToSide) || 0,  // ✅ ADD THIS
+    dropTargetBackhand: parseFloat(formData.dropTargetBackhand) || 0,
+    dropTargetForehand: parseFloat(formData.dropTargetForehand) || 0,
+    serviceBoxDriveForehand: parseFloat(formData.serviceBoxDriveForehand) || 0,
+    serviceBoxDriveBackhand: parseFloat(formData.serviceBoxDriveBackhand) || 0,
+    cornerVolleys: parseFloat(formData.cornerVolleys) || 0,
+    beepTest: parseFloat(formData.beepTest) || 0,
+    ballTransfer: parseFloat(formData.ballTransfer) || 0,
+    slalom: parseFloat(formData.slalom) || 0
+  }
+};
 
     try {
       const savedSession = await window.firebaseService.addMatrixSession(session);
@@ -93,18 +99,19 @@ const MatrixForm = ({ players, onSessionSaved }) => {
   };
 
   const exercises = [
-    { key: 'volleyFigure8', label: 'Volley Figure 8', icon: '🎯' },
-    { key: 'bounceFigure8', label: 'Bounce Figure 8', icon: '⚡' },
-    { key: 'volleySideToSide', label: 'Volley Side to Side', icon: '↔️' },
-    { key: 'dropTargetBackhand', label: 'Drop Target Backhand', icon: '🎾' },
-    { key: 'dropTargetForehand', label: 'Drop Target Forehand', icon: '🎾' },
-    { key: 'serviceBoxDriveForehand', label: 'Service Box Drive Forehand', icon: '📦' },
-    { key: 'serviceBoxDriveBackhand', label: 'Service Box Drive Backhand', icon: '📦' },
-    { key: 'cornerVolleys', label: 'Corner Volleys', icon: '🔲' },
-    { key: 'beepTest', label: 'Beep Test', icon: '⏱️' },
-    { key: 'ballTransfer', label: 'Ball Transfer', icon: '🔄' },
-    { key: 'slalom', label: 'Slalom', icon: '🎿' }
-  ];
+  { key: 'volleyFigure8', label: 'Volley Figure 8', icon: '🎯', help: 'Complete for 1 minute. Record repetitions.' },
+  { key: 'bounceFigure8', label: 'Bounce Figure 8', icon: '⚡', help: 'Complete for 1 minute. Record repetitions.' },
+  { key: 'volleySideToSide', label: 'Volley Side to Side', icon: '↔️', help: 'Complete for 1 minute. Record repetitions.' },
+  { key: 'bounceSideToSide', label: 'Bounce Side to Side', icon: '🔄', help: 'Complete for 1 minute. Record repetitions.' }, // ✅ NEW
+  { key: 'dropTargetBackhand', label: 'Drop Target Backhand', icon: '🎾', help: 'Reps both sides for 1 minute. Record repetitions.' },
+  { key: 'dropTargetForehand', label: 'Drop Target Forehand', icon: '🎾', help: 'Reps both sides for 1 minute. Record repetitions.' },
+  { key: 'serviceBoxDriveForehand', label: 'Service Box Drive Forehand', icon: '📦', help: 'Drives both sides for 1 minute. Record repetitions.' },
+  { key: 'serviceBoxDriveBackhand', label: 'Service Box Drive Backhand', icon: '📦', help: 'Drives both sides for 1 minute. Record repetitions.' },
+  { key: 'cornerVolleys', label: 'Corner Volleys', icon: '🔲', help: 'Complete for 1 minute. Record repetitions.' },
+  { key: 'beepTest', label: 'Beep Test', icon: '⏱️', help: 'Record the level achieved.' },
+  { key: 'ballTransfer', label: 'Ball Transfer', icon: '🔄', help: 'Transfer 6 balls from racket and back. Record time.' },
+  { key: 'slalom', label: 'Slalom', icon: '🎿', help: 'Fast movement between 6 cones for 10 reps. Record time.' }
+];
 
   return React.createElement('div', { className: 'card' }, [
     React.createElement('h2', { className: 'section-header', key: 'header' }, [
@@ -112,10 +119,10 @@ const MatrixForm = ({ players, onSessionSaved }) => {
       'Record Matrix Session'
     ]),
     React.createElement('div', { className: 'space-y-4', key: 'form' }, [
-      // Player Select
-      React.createElement('div', { key: 'player' }, [
-        React.createElement('label', { key: 'label' }, 'Player'),
-        React.createElement('select', {
+      // Player Select (only show for coaches)
+userRole === 'coach' && React.createElement('div', { key: 'player' }, [
+  React.createElement('label', { key: 'label' }, 'Player'),
+  React.createElement('select', {
           key: 'select',
           value: selectedPlayer,
           onChange: (e) => setSelectedPlayer(e.target.value),
@@ -156,50 +163,59 @@ const MatrixForm = ({ players, onSessionSaved }) => {
           key: 'title',
           style: { fontWeight: '600', marginBottom: '0.5rem' }
         }, 'ℹ️ Score Range'),
-        React.createElement('p', { key: 'desc' }, 'Enter scores from 0-100 for each exercise. Leave blank if not performed.')
+        React.createElement('p', { key: 'desc' }, 'Enter scores/times/levels for each exercise. Leave blank if not performed.')
       ]),
       
       // Exercises Grid
       React.createElement('div', { className: 'border-t', key: 'exercises' }, [
         React.createElement('label', { className: 'section-label', key: 'label' }, 'Matrix Exercises (0-100)'),
         React.createElement('div', { className: 'grid-2', key: 'grid' },
-          exercises.map(exercise =>
-            React.createElement('div', {
-              key: exercise.key,
-              style: {
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem'
-              }
-            }, [
-              React.createElement('label', {
-                key: 'label',
-                style: {
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }
-              }, [
-                React.createElement('span', { key: 'icon' }, exercise.icon),
-                exercise.label
-              ]),
-              React.createElement('input', {
-                key: 'input',
-                type: 'number',
-                placeholder: '0-100',
-                min: '0',
-                max: '100',
-                step: '0.1',
-                value: formData[exercise.key],
-                onChange: (e) => updateFormData(exercise.key, e.target.value),
-                disabled: isSubmitting
-              })
-            ])
-          )
-        )
+  exercises.map(exercise =>
+    React.createElement('div', {
+      key: exercise.key,
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem'
+      }
+    }, [
+      React.createElement('label', {
+        key: 'label',
+        style: {
+          fontSize: '0.875rem',
+          fontWeight: '500',
+          color: '#374151',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem'
+        }
+      }, [
+        React.createElement('span', { key: 'icon' }, exercise.icon),
+        exercise.label
+      ]),
+      React.createElement('p', {
+        key: 'help',
+        style: {
+          fontSize: '0.75rem',
+          color: '#6b7280',
+          marginBottom: '0.25rem',
+          fontStyle: 'italic'
+        }
+      }, exercise.help),
+      React.createElement('input', {
+        key: 'input',
+        type: 'number',
+        placeholder: 'score / time / level',
+        min: '0',
+        max: '200',
+        step: '0.1',
+        value: formData[exercise.key],
+        onChange: (e) => updateFormData(exercise.key, e.target.value),
+        disabled: isSubmitting
+      })
+    ])
+  )
+)
       ]),
       
       // Submit Button

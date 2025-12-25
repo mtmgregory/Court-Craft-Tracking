@@ -69,16 +69,16 @@ const Navigation = ({ view, setView, userRole }) => {
           onClick: () => setView('dashboard'),
           className: `nav-button ${view === 'dashboard' ? 'active' : ''}`
         }, userRole === 'coach' ? 'Coach Dashboard' : 'My Dashboard'),
-        userRole === 'coach' && React.createElement('button', {
-          key: 'record',
-          onClick: () => setView('record'),
-          className: `nav-button ${view === 'record' ? 'active' : ''}`
-        }, 'Record Session'),
-        userRole === 'coach' && React.createElement('button', {
-          key: 'record-matrix',
-          onClick: () => setView('record-matrix'),
-          className: `nav-button ${view === 'record-matrix' ? 'active' : ''}`
-        }, 'Record Matrix'),
+        React.createElement('button', {
+  key: 'record',
+  onClick: () => setView('record'),
+  className: `nav-button ${view === 'record' ? 'active' : ''}`
+}, 'Record Session'),
+React.createElement('button', {
+  key: 'record-matrix',
+  onClick: () => setView('record-matrix'),
+  className: `nav-button ${view === 'record-matrix' ? 'active' : ''}`
+}, 'Record Matrix'),
         React.createElement('button', {
           key: 'insights',
           onClick: () => setView('insights'),
@@ -464,8 +464,10 @@ const RecentSessions = ({ sessions }) => {
 // ========================================
 // TRAINING FORM (Updated with validation #3 and date handling #6)
 // ========================================
-const TrainingForm = ({ players, onSessionSaved }) => {
-  const [selectedPlayer, setSelectedPlayer] = React.useState('');
+const TrainingForm = ({ players, onSessionSaved, userRole, userPlayerId }) => {
+  const [selectedPlayer, setSelectedPlayer] = React.useState(
+  userRole === 'player' ? userPlayerId : ''
+);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formData, setFormData] = React.useState({
     date: window.utils.getLocalDateString(),
@@ -550,10 +552,10 @@ const TrainingForm = ({ players, onSessionSaved }) => {
       'Record Training Session'
     ]),
     React.createElement('div', { className: 'space-y-4', key: 'form' }, [
-      // Player Select
-      React.createElement('div', { key: 'player' }, [
-        React.createElement('label', { key: 'label' }, 'Player'),
-        React.createElement('select', {
+      // Player Select (only show for coaches)
+userRole === 'coach' && React.createElement('div', { key: 'player' }, [
+  React.createElement('label', { key: 'label' }, 'Player'),
+  React.createElement('select', {
           key: 'select',
           value: selectedPlayer,
           onChange: (e) => setSelectedPlayer(e.target.value),
@@ -679,8 +681,16 @@ const TrainingForm = ({ players, onSessionSaved }) => {
 // ========================================
 // HISTORY VIEW (Updated with date handling #6 and Matrix Sessions)
 // ========================================
+// Replace the HistoryView component in components.js with this version
+
 const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
   const [selectedPlayer, setSelectedPlayer] = React.useState('');
+  const [editingSession, setEditingSession] = React.useState(null);
+  const [editingMatrixSession, setEditingMatrixSession] = React.useState(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  
+  const userRole = window.authService.currentUserData?.role;
+  const isCoach = userRole === 'coach';
 
   const filteredSessions = React.useMemo(() => {
     if (!selectedPlayer) return sessions;
@@ -691,6 +701,456 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
     if (!selectedPlayer) return matrixSessions;
     return matrixSessions.filter(s => s.playerId === selectedPlayer);
   }, [selectedPlayer, matrixSessions]);
+
+  // Handle delete session
+  const handleDeleteSession = async (sessionId, isMatrix = false) => {
+    if (!window.confirm('Are you sure you want to delete this session? This cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      if (isMatrix) {
+        await window.firebaseService.deleteMatrixSession(sessionId);
+      } else {
+        await window.firebaseService.deleteSession(sessionId);
+      }
+      alert('✅ Session deleted successfully!');
+      window.location.reload(); // Reload to refresh data
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      alert('❌ Error deleting session: ' + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Edit Session Modal Component
+  const EditSessionModal = ({ session, onClose, onSave }) => {
+    const [formData, setFormData] = React.useState({
+      date: session.date,
+      runTime: session.runTime,
+      leftSingle: session.broadJumps.leftSingle || '',
+      rightSingle: session.broadJumps.rightSingle || '',
+      doubleSingle: session.broadJumps.doubleSingle || '',
+      leftTriple: session.broadJumps.leftTriple || '',
+      rightTriple: session.broadJumps.rightTriple || '',
+      doubleTriple: session.broadJumps.doubleTriple || '',
+      sprint1: session.sprints[0] || '',
+      sprint2: session.sprints[1] || '',
+      sprint3: session.sprints[2] || '',
+      sprint4: session.sprints[3] || '',
+      sprint5: session.sprints[4] || '',
+      sprint6: session.sprints[5] || ''
+    });
+    const [isSaving, setIsSaving] = React.useState(false);
+
+    const updateField = (field, value) => {
+      setFormData({ ...formData, [field]: value });
+    };
+
+    const handleSave = async () => {
+      const validation = window.utils.validators.validateTrainingForm(formData);
+      
+      if (!validation.valid) {
+        const errorMessage = 'Please fix the following errors:\n\n' + 
+          validation.errors.map((err, idx) => `${idx + 1}. ${err}`).join('\n');
+        alert(errorMessage);
+        return;
+      }
+
+      setIsSaving(true);
+
+      const updatedSession = {
+        playerId: session.playerId,
+        playerName: session.playerName,
+        date: formData.date,
+        runTime: formData.runTime,
+        broadJumps: {
+          leftSingle: parseFloat(formData.leftSingle) || 0,
+          rightSingle: parseFloat(formData.rightSingle) || 0,
+          doubleSingle: parseFloat(formData.doubleSingle) || 0,
+          leftTriple: parseFloat(formData.leftTriple) || 0,
+          rightTriple: parseFloat(formData.rightTriple) || 0,
+          doubleTriple: parseFloat(formData.doubleTriple) || 0
+        },
+        sprints: [
+          parseFloat(formData.sprint1) || 0,
+          parseFloat(formData.sprint2) || 0,
+          parseFloat(formData.sprint3) || 0,
+          parseFloat(formData.sprint4) || 0,
+          parseFloat(formData.sprint5) || 0,
+          parseFloat(formData.sprint6) || 0
+        ],
+        createdAt: session.createdAt
+      };
+
+      try {
+        await window.firebaseService.updateSession(session.id, updatedSession);
+        alert('✅ Session updated successfully!');
+        onSave();
+        window.location.reload();
+      } catch (error) {
+        console.error('Error updating session:', error);
+        alert('❌ Error updating session: ' + error.message);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    return React.createElement('div', {
+      style: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+        overflowY: 'auto'
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget) onClose();
+      }
+    }, [
+      React.createElement('div', {
+        key: 'modal',
+        style: {
+          background: 'white',
+          padding: '1.5rem',
+          borderRadius: '1rem',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }
+      }, [
+        React.createElement('h3', {
+          key: 'title',
+          style: {
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            marginBottom: '1rem'
+          }
+        }, '✏️ Edit Training Session'),
+
+        React.createElement('div', { key: 'form', className: 'space-y-4' }, [
+          // Date
+          React.createElement('div', { key: 'date' }, [
+            React.createElement('label', { key: 'label' }, 'Date'),
+            React.createElement('input', {
+              key: 'input',
+              type: 'date',
+              value: formData.date,
+              onChange: (e) => updateField('date', e.target.value),
+              disabled: isSaving
+            })
+          ]),
+          
+          // Run Time
+          React.createElement('div', { key: 'run' }, [
+            React.createElement('label', { key: 'label' }, 'Run Time (MM:SS)'),
+            React.createElement('input', {
+              key: 'input',
+              type: 'text',
+              placeholder: 'MM:SS (e.g., 07:30)',
+              value: formData.runTime,
+              onChange: (e) => updateField('runTime', e.target.value),
+              disabled: isSaving
+            })
+          ]),
+          
+          // Broad Jumps
+          React.createElement('div', { key: 'jumps' }, [
+            React.createElement('label', { key: 'label', style: { fontWeight: '600', marginBottom: '0.5rem', display: 'block' } }, 
+              'Broad Jumps (cm)'),
+            React.createElement('div', { className: 'grid-2', key: 'grid' }, [
+              React.createElement('input', {
+                key: 'leftSingle',
+                type: 'number',
+                placeholder: 'L Single',
+                value: formData.leftSingle,
+                onChange: (e) => updateField('leftSingle', e.target.value),
+                disabled: isSaving
+              }),
+              React.createElement('input', {
+                key: 'rightSingle',
+                type: 'number',
+                placeholder: 'R Single',
+                value: formData.rightSingle,
+                onChange: (e) => updateField('rightSingle', e.target.value),
+                disabled: isSaving
+              }),
+              React.createElement('input', {
+                key: 'doubleSingle',
+                type: 'number',
+                placeholder: 'Double',
+                value: formData.doubleSingle,
+                onChange: (e) => updateField('doubleSingle', e.target.value),
+                disabled: isSaving,
+                className: 'col-span-2'
+              }),
+              React.createElement('input', {
+                key: 'leftTriple',
+                type: 'number',
+                placeholder: 'L Triple',
+                value: formData.leftTriple,
+                onChange: (e) => updateField('leftTriple', e.target.value),
+                disabled: isSaving
+              }),
+              React.createElement('input', {
+                key: 'rightTriple',
+                type: 'number',
+                placeholder: 'R Triple',
+                value: formData.rightTriple,
+                onChange: (e) => updateField('rightTriple', e.target.value),
+                disabled: isSaving
+              }),
+              React.createElement('input', {
+                key: 'doubleTriple',
+                type: 'number',
+                placeholder: 'Double Triple',
+                value: formData.doubleTriple,
+                onChange: (e) => updateField('doubleTriple', e.target.value),
+                disabled: isSaving,
+                className: 'col-span-2'
+              })
+            ])
+          ]),
+          
+          // Sprints
+          React.createElement('div', { key: 'sprints' }, [
+            React.createElement('label', { key: 'label', style: { fontWeight: '600', marginBottom: '0.5rem', display: 'block' } }, 
+              'Sprint Sets'),
+            React.createElement('div', { className: 'grid-3-cols', key: 'grid' },
+              [1, 2, 3, 4, 5, 6].map(num =>
+                React.createElement('input', {
+                  key: num,
+                  type: 'number',
+                  placeholder: `Set ${num}`,
+                  value: formData[`sprint${num}`],
+                  onChange: (e) => updateField(`sprint${num}`, e.target.value),
+                  disabled: isSaving
+                })
+              )
+            )
+          ])
+        ]),
+
+        // Buttons
+        React.createElement('div', {
+          key: 'buttons',
+          style: {
+            display: 'flex',
+            gap: '0.5rem',
+            marginTop: '1.5rem',
+            justifyContent: 'flex-end'
+          }
+        }, [
+          React.createElement('button', {
+            key: 'cancel',
+            onClick: onClose,
+            className: 'btn btn-secondary',
+            disabled: isSaving
+          }, 'Cancel'),
+          React.createElement('button', {
+            key: 'save',
+            onClick: handleSave,
+            className: 'btn btn-primary',
+            disabled: isSaving
+          }, isSaving ? 'Saving...' : 'Save Changes')
+        ])
+      ])
+    ]);
+  };
+
+  // Edit Matrix Session Modal Component
+  const EditMatrixSessionModal = ({ session, onClose, onSave }) => {
+    const [formData, setFormData] = React.useState({
+      date: session.date,
+      ...session.exercises
+    });
+    const [isSaving, setIsSaving] = React.useState(false);
+
+    const updateField = (field, value) => {
+      setFormData({ ...formData, [field]: value });
+    };
+
+    const handleSave = async () => {
+      const validation = window.utils.validators.validateMatrixForm(formData);
+      
+      if (!validation.valid) {
+        const errorMessage = 'Please fix the following errors:\n\n' + 
+          validation.errors.map((err, idx) => `${idx + 1}. ${err}`).join('\n');
+        alert(errorMessage);
+        return;
+      }
+
+      setIsSaving(true);
+
+      const updatedSession = {
+        playerId: session.playerId,
+        playerName: session.playerName,
+        date: formData.date,
+        exercises: {
+          volleyFigure8: parseFloat(formData.volleyFigure8) || 0,
+          bounceFigure8: parseFloat(formData.bounceFigure8) || 0,
+          volleySideToSide: parseFloat(formData.volleySideToSide) || 0,
+          dropTargetBackhand: parseFloat(formData.dropTargetBackhand) || 0,
+          dropTargetForehand: parseFloat(formData.dropTargetForehand) || 0,
+          serviceBoxDriveForehand: parseFloat(formData.serviceBoxDriveForehand) || 0,
+          serviceBoxDriveBackhand: parseFloat(formData.serviceBoxDriveBackhand) || 0,
+          cornerVolleys: parseFloat(formData.cornerVolleys) || 0,
+          beepTest: parseFloat(formData.beepTest) || 0,
+          ballTransfer: parseFloat(formData.ballTransfer) || 0,
+          slalom: parseFloat(formData.slalom) || 0
+        },
+        createdAt: session.createdAt
+      };
+
+      try {
+        await window.firebaseService.updateMatrixSession(session.id, updatedSession);
+        alert('✅ Matrix session updated successfully!');
+        onSave();
+        window.location.reload();
+      } catch (error) {
+        console.error('Error updating matrix session:', error);
+        alert('❌ Error updating matrix session: ' + error.message);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    const exercises = [
+      { key: 'volleyFigure8', label: 'Volley Figure 8' },
+      { key: 'bounceFigure8', label: 'Bounce Figure 8' },
+      { key: 'volleySideToSide', label: 'Volley Side to Side' },
+      { key: 'dropTargetBackhand', label: 'Drop Target Backhand' },
+      { key: 'dropTargetForehand', label: 'Drop Target Forehand' },
+      { key: 'serviceBoxDriveForehand', label: 'Service Box Drive Forehand' },
+      { key: 'serviceBoxDriveBackhand', label: 'Service Box Drive Backhand' },
+      { key: 'cornerVolleys', label: 'Corner Volleys' },
+      { key: 'beepTest', label: 'Beep Test' },
+      { key: 'ballTransfer', label: 'Ball Transfer' },
+      { key: 'slalom', label: 'Slalom' }
+    ];
+
+    return React.createElement('div', {
+      style: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+        overflowY: 'auto'
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget) onClose();
+      }
+    }, [
+      React.createElement('div', {
+        key: 'modal',
+        style: {
+          background: 'white',
+          padding: '1.5rem',
+          borderRadius: '1rem',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }
+      }, [
+        React.createElement('h3', {
+          key: 'title',
+          style: {
+            fontSize: '1.25rem',
+            fontWeight: '600',
+            marginBottom: '1rem'
+          }
+        }, '✏️ Edit Matrix Session'),
+
+        React.createElement('div', { key: 'form', className: 'space-y-4' }, [
+          // Date
+          React.createElement('div', { key: 'date' }, [
+            React.createElement('label', { key: 'label' }, 'Date'),
+            React.createElement('input', {
+              key: 'input',
+              type: 'date',
+              value: formData.date,
+              onChange: (e) => updateField('date', e.target.value),
+              disabled: isSaving
+            })
+          ]),
+          
+          // Exercises
+          React.createElement('div', { key: 'exercises' }, [
+            React.createElement('label', { 
+              key: 'label', 
+              style: { fontWeight: '600', marginBottom: '0.5rem', display: 'block' } 
+            }, 'Matrix Exercises (0-100)'),
+            React.createElement('div', { className: 'grid-2', key: 'grid' },
+              exercises.map(exercise =>
+                React.createElement('div', {
+                  key: exercise.key,
+                  style: { display: 'flex', flexDirection: 'column', gap: '0.25rem' }
+                }, [
+                  React.createElement('label', {
+                    key: 'label',
+                    style: { fontSize: '0.875rem', fontWeight: '500', color: '#374151' }
+                  }, exercise.label),
+                  React.createElement('input', {
+                    key: 'input',
+                    type: 'number',
+                    placeholder: '0-100',
+                    min: '0',
+                    max: '100',
+                    step: '0.1',
+                    value: formData[exercise.key],
+                    onChange: (e) => updateField(exercise.key, e.target.value),
+                    disabled: isSaving
+                  })
+                ])
+              )
+            )
+          ])
+        ]),
+
+        // Buttons
+        React.createElement('div', {
+          key: 'buttons',
+          style: {
+            display: 'flex',
+            gap: '0.5rem',
+            marginTop: '1.5rem',
+            justifyContent: 'flex-end'
+          }
+        }, [
+          React.createElement('button', {
+            key: 'cancel',
+            onClick: onClose,
+            className: 'btn btn-secondary',
+            disabled: isSaving
+          }, 'Cancel'),
+          React.createElement('button', {
+            key: 'save',
+            onClick: handleSave,
+            className: 'btn btn-primary',
+            disabled: isSaving
+          }, isSaving ? 'Saving...' : 'Save Changes')
+        ])
+      ])
+    ]);
+  };
 
   return React.createElement('div', { className: 'card' }, [
     React.createElement('h2', { className: 'section-header', key: 'header' }, 'Training History'),
@@ -713,8 +1173,12 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
           }, 'No training sessions found')
         : filteredSessions.map(session =>
             React.createElement('div', { key: session.id, className: 'history-detail' }, [
-              // Header
-              React.createElement('div', { className: 'session-header mb-4', key: 'header' }, [
+              // Header with action buttons
+              React.createElement('div', { 
+                className: 'session-header mb-4', 
+                key: 'header',
+                style: { alignItems: 'flex-start' }
+              }, [
                 React.createElement('div', { key: 'info' }, [
                   React.createElement('h3', {
                     className: 'session-player',
@@ -725,9 +1189,33 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
                     window.utils.formatDateLong(session.date)
                   )
                 ]),
-                React.createElement('div', { key: 'time' }, [
-                  React.createElement('p', { className: 'session-date', key: 'label' }, '2km Run Time'),
-                  React.createElement('p', { className: 'session-time', key: 'value' }, session.runTime || 'N/A')
+                React.createElement('div', { 
+                  key: 'actions',
+                  style: { display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }
+                }, [
+                  React.createElement('div', { key: 'time' }, [
+                    React.createElement('p', { className: 'session-date', key: 'label' }, '2km Run Time'),
+                    React.createElement('p', { className: 'session-time', key: 'value' }, session.runTime || 'N/A')
+                  ]),
+                  isCoach && React.createElement('div', {
+                    key: 'buttons',
+                    style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }
+                  }, [
+                    React.createElement('button', {
+                      key: 'edit',
+                      onClick: () => setEditingSession(session),
+                      className: 'btn btn-secondary',
+                      style: { fontSize: '0.75rem', padding: '0.375rem 0.75rem' },
+                      disabled: isDeleting
+                    }, '✏️ Edit'),
+                    React.createElement('button', {
+                      key: 'delete',
+                      onClick: () => handleDeleteSession(session.id, false),
+                      className: 'btn btn-danger',
+                      style: { fontSize: '0.75rem', padding: '0.375rem 0.75rem' },
+                      disabled: isDeleting
+                    }, '🗑️ Delete')
+                  ])
                 ])
               ]),
               
@@ -783,8 +1271,12 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
         React.createElement('div', { className: 'space-y-4', key: 'list' },
           filteredMatrixSessions.map(session =>
             React.createElement('div', { key: session.id, className: 'history-detail' }, [
-              // Header
-              React.createElement('div', { className: 'session-header mb-4', key: 'header' }, [
+              // Header with action buttons
+              React.createElement('div', { 
+                className: 'session-header mb-4', 
+                key: 'header',
+                style: { alignItems: 'flex-start' }
+              }, [
                 React.createElement('div', { key: 'info' }, [
                   React.createElement('h3', {
                     className: 'session-player',
@@ -795,17 +1287,41 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
                     window.utils.formatDateLong(session.date)
                   )
                 ]),
-                React.createElement('span', {
-                  key: 'badge',
-                  style: {
-                    background: '#3b82f6',
-                    color: 'white',
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '600'
-                  }
-                }, '🎯 Matrix')
+                React.createElement('div', {
+                  key: 'actions',
+                  style: { display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }
+                }, [
+                  React.createElement('span', {
+                    key: 'badge',
+                    style: {
+                      background: '#3b82f6',
+                      color: 'white',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }
+                  }, '🎯 Matrix'),
+                  isCoach && React.createElement('div', {
+                    key: 'buttons',
+                    style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }
+                  }, [
+                    React.createElement('button', {
+                      key: 'edit',
+                      onClick: () => setEditingMatrixSession(session),
+                      className: 'btn btn-secondary',
+                      style: { fontSize: '0.75rem', padding: '0.375rem 0.75rem' },
+                      disabled: isDeleting
+                    }, '✏️ Edit'),
+                    React.createElement('button', {
+                      key: 'delete',
+                      onClick: () => handleDeleteSession(session.id, true),
+                      className: 'btn btn-danger',
+                      style: { fontSize: '0.75rem', padding: '0.375rem 0.75rem' },
+                      disabled: isDeleting
+                    }, '🗑️ Delete')
+                  ])
+                ])
               ]),
               
               // Exercise Scores Grid
@@ -849,7 +1365,23 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
           )
         )
       ])
-    ])
+    ]),
+
+    // Edit Session Modal
+    editingSession && React.createElement(EditSessionModal, {
+      key: 'edit-modal',
+      session: editingSession,
+      onClose: () => setEditingSession(null),
+      onSave: () => setEditingSession(null)
+    }),
+
+    // Edit Matrix Session Modal
+    editingMatrixSession && React.createElement(EditMatrixSessionModal, {
+      key: 'edit-matrix-modal',
+      session: editingMatrixSession,
+      onClose: () => setEditingMatrixSession(null),
+      onSave: () => setEditingMatrixSession(null)
+    })
   ]);
 };
 
@@ -1315,6 +1847,441 @@ const TripleJumpChart = ({ chartData }) => {
   );
 };
 
+
+// ========================================
+// MATRIX EXERCISE CHART COMPONENTS
+// Add these to components.js after the existing chart components
+// ========================================
+
+// Matrix Volleys Chart (Volley Figure 8, Bounce Figure 8, Corner Volleys, Side to Side)
+const MatrixVolleysChart = ({ matrixData }) => {
+  if (matrixData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, matrixData.length === 0 
+        ? 'No volley data recorded yet' 
+        : 'Need at least 2 sessions to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: matrixData.map(d => d.date),
+    datasets: [
+      {
+        label: '🎯 Volley Figure 8',
+        data: matrixData.map(d => d.volleyFigure8 || null),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '⚡ Bounce Figure 8',
+        data: matrixData.map(d => d.bounceFigure8 || null),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '↔️ Volley Side to Side',
+        data: matrixData.map(d => d.volleySideToSide || null),
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '🔄 Bounce Side to Side',  // ✅ ADD THIS ENTIRE BLOCK
+        data: matrixData.map(d => d.bounceSideToSide || null),
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '🔲 Corner Volleys',
+        data: matrixData.map(d => d.cornerVolleys || null),
+        borderColor: '#ec4899',
+        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Score'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// Matrix Targets Chart (Drop Target Backhand, Drop Target Forehand, Service Box Drives)
+const MatrixTargetsChart = ({ matrixData }) => {
+  if (matrixData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, matrixData.length === 0 
+        ? 'No target data recorded yet' 
+        : 'Need at least 2 sessions to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: matrixData.map(d => d.date),
+    datasets: [
+      {
+        label: '🎾 Drop Target Backhand',
+        data: matrixData.map(d => d.dropTargetBackhand || null),
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '🎾 Drop Target Forehand',
+        data: matrixData.map(d => d.dropTargetForehand || null),
+        borderColor: '#06b6d4',
+        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '📦 Service Box Drive FH',
+        data: matrixData.map(d => d.serviceBoxDriveForehand || null),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '📦 Service Box Drive BH',
+        data: matrixData.map(d => d.serviceBoxDriveBackhand || null),
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Score'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// Matrix Beep Test Chart (Solo)
+const MatrixBeepTestChart = ({ matrixData }) => {
+  if (matrixData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, matrixData.length === 0 
+        ? 'No beep test data recorded yet' 
+        : 'Need at least 2 sessions to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: matrixData.map(d => d.date),
+    datasets: [
+      {
+        label: '⏱️ Beep Test Level',
+        data: matrixData.map(d => d.beepTest || null),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        spanGaps: true,
+        fill: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            return 'Level: ' + context.parsed.y.toFixed(1);
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Level'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
+// Matrix Agility Chart (Ball Transfer & Slalom)
+const MatrixAgilityChart = ({ matrixData }) => {
+  if (matrixData.length < 2) {
+    return React.createElement('div', {
+      style: { 
+        textAlign: 'center', 
+        padding: '2rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem',
+        border: '1px dashed #d1d5db'
+      }
+    }, [
+      React.createElement('p', {
+        key: 'icon',
+        style: { fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }
+      }, '📊'),
+      React.createElement('p', {
+        key: 'text',
+        style: { color: '#6b7280', fontWeight: '500' }
+      }, matrixData.length === 0 
+        ? 'No agility data recorded yet' 
+        : 'Need at least 2 sessions to show trend')
+    ]);
+  }
+
+  const data = {
+    labels: matrixData.map(d => d.date),
+    datasets: [
+      {
+        label: '🔄 Ball Transfer',
+        data: matrixData.map(d => d.ballTransfer || null),
+        borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+      {
+        label: '🎿 Slalom',
+        data: matrixData.map(d => d.slalom || null),
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      }
+    ]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top'
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Score'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      }
+    }
+  };
+
+  return React.createElement('div', { 
+    style: { position: 'relative', height: '300px' }
+  }, 
+    React.createElement(ChartComponent, { 
+      type: 'line', 
+      data, 
+      options 
+    })
+  );
+};
+
 // ========================================
 // LAZY LOADING HOOK FOR CHART.JS (#14)
 // ========================================
@@ -1377,7 +2344,12 @@ const useChartJS = () => {
 // ENHANCED INSIGHTS VIEW - PART 1
 // ========================================
 const InsightsView = ({ players, sessions, matrixSessions = [] }) => {
-  const [selectedPlayer, setSelectedPlayer] = React.useState('');
+  // Auto-select player if user is a player
+  const userRole = window.authService.currentUserData?.role;
+  const userPlayerId = window.authService.currentUserData?.playerId;
+  const initialPlayer = userRole === 'player' ? userPlayerId : '';
+  
+  const [selectedPlayer, setSelectedPlayer] = React.useState(initialPlayer);
   const { chartReady, chartError } = useChartJS();
 
   // Step 1: Filter player sessions
@@ -1405,6 +2377,30 @@ const InsightsView = ({ players, sessions, matrixSessions = [] }) => {
   }, [selectedPlayer, playerSessions]);
 
   const hasCharts = chartReady && window.Chart;
+
+  // Matrix chart data processing
+const matrixChartData = React.useMemo(() => {
+  if (!selectedPlayer || playerMatrixSessions.length === 0) return [];
+  
+  return playerMatrixSessions
+    .sort((a, b) => window.utils.compareDates(a.date, b.date))
+    .slice(-10) // Last 10 sessions
+    .map(session => ({
+      date: window.utils.formatDate(session.date),
+      volleyFigure8: session.exercises.volleyFigure8 || null,
+      bounceFigure8: session.exercises.bounceFigure8 || null,
+      volleySideToSide: session.exercises.volleySideToSide || null,
+      bounceSideToSide: session.exercises.bounceSideToSide || null,  // ✅ ADD THIS
+      dropTargetBackhand: session.exercises.dropTargetBackhand || null,
+      dropTargetForehand: session.exercises.dropTargetForehand || null,
+      serviceBoxDriveForehand: session.exercises.serviceBoxDriveForehand || null,
+      serviceBoxDriveBackhand: session.exercises.serviceBoxDriveBackhand || null,
+      cornerVolleys: session.exercises.cornerVolleys || null,
+      beepTest: session.exercises.beepTest || null,
+      ballTransfer: session.exercises.ballTransfer || null,
+      slalom: session.exercises.slalom || null
+    }));
+}, [selectedPlayer, playerMatrixSessions]);
 
   return React.createElement('div', { className: 'space-y-6' }, [
     // Player Selection Card
@@ -2245,10 +3241,98 @@ const InsightsView = ({ players, sessions, matrixSessions = [] }) => {
             'Triple Jump Performance (All Types)'
           ]),
           React.createElement(TripleJumpChart, { key: 'chart', chartData })
-        ])
+        ]),
+          
+        /// Matrix Performance Charts
+        selectedPlayer && matrixChartData.length > 0 && hasCharts && React.createElement('div', { className: 'card', key: 'matrix-charts' }, [
+  React.createElement('h3', { className: 'section-header', key: 'header' }, '🎯 Matrix Performance Trends'),
+  
+  // Volleys Chart
+  React.createElement('div', { style: { marginBottom: '2rem' }, key: 'volleys-chart' }, [
+    React.createElement('h4', {
+      key: 'title',
+      style: { 
+        fontSize: '1rem', 
+        fontWeight: '600', 
+        marginBottom: '1rem', 
+        color: '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }
+    }, [
+      React.createElement('span', { key: 'icon' }, '🎯'),
+      'Volley Exercises (Figure 8s, Corner Volleys, Side to Side)'
+    ]),
+    React.createElement(MatrixVolleysChart, { key: 'chart', matrixData: matrixChartData })
+  ]),
+  
+  // Targets Chart
+  React.createElement('div', { style: { marginBottom: '2rem' }, key: 'targets-chart' }, [
+    React.createElement('h4', {
+      key: 'title',
+      style: { 
+        fontSize: '1rem', 
+        fontWeight: '600', 
+        marginBottom: '1rem', 
+        color: '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }
+    }, [
+      React.createElement('span', { key: 'icon' }, '🎾'),
+      'Target Accuracy (Drops & Service Box Drives)'
+    ]),
+    React.createElement(MatrixTargetsChart, { key: 'chart', matrixData: matrixChartData })
+  ]),
+  
+  // Beep Test Chart
+  React.createElement('div', { style: { marginBottom: '2rem' }, key: 'beep-chart' }, [
+    React.createElement('h4', {
+      key: 'title',
+      style: { 
+        fontSize: '1rem', 
+        fontWeight: '600', 
+        marginBottom: '1rem', 
+        color: '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }
+    }, [
+      React.createElement('span', { key: 'icon' }, '⏱️'),
+      'Beep Test Performance'
+    ]),
+    React.createElement(MatrixBeepTestChart, { key: 'chart', matrixData: matrixChartData })
+  ]),
+  
+  // Agility Chart
+  React.createElement('div', { key: 'agility-chart' }, [
+    React.createElement('h4', {
+      key: 'title',
+      style: { 
+        fontSize: '1rem', 
+        fontWeight: '600', 
+        marginBottom: '1rem', 
+        color: '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }
+    }, [
+      React.createElement('span', { key: 'icon' }, '🏃'),
+      'Agility Drills (Ball Transfer & Slalom)'
+    ]),
+    React.createElement(MatrixAgilityChart, { key: 'chart', matrixData: matrixChartData })
+  ])
+]),
+
       ]
     ]),
 
+    
+   
     // Empty state when no player selected
     !selectedPlayer && React.createElement('div', { className: 'card', key: 'empty' },
       React.createElement('div', { 
@@ -2269,12 +3353,10 @@ const InsightsView = ({ players, sessions, matrixSessions = [] }) => {
       ])
     )
   ]);
+  
 };
 
-// ========================================
-// COMBINED COMPONENTS FILE - PART 4C OF 5 (FINAL)
-// Record View and Component Exports
-// ========================================
+
 
 // ========================================
 // RECORD VIEW
