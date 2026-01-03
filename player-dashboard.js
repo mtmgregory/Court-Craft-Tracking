@@ -198,7 +198,7 @@ const QuickStats = ({ insights }) => {
               insights.personalBests.bestLeftJump?.value || 0,
               insights.personalBests.bestRightJump?.value || 0,
               insights.personalBests.bestDoubleJump?.value || 0
-            ) + ' cm'
+            ) + 'mm'
           : 'N/A'
       )
     ]),

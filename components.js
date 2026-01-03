@@ -595,7 +595,7 @@ userRole === 'coach' && React.createElement('div', { key: 'player' }, [
       
       // Broad Jumps
       React.createElement('div', { className: 'border-t', key: 'jumps' }, [
-        React.createElement('label', { className: 'section-label', key: 'label' }, '2. Broad Jumps (Distance in cm)'),
+        React.createElement('label', { className: 'section-label', key: 'label' }, '2. Broad Jumps (Distance in mm)'),
         React.createElement('div', { className: 'grid-2', key: 'grid' }, [
           React.createElement('input', {
             key: 'leftSingle',
@@ -867,7 +867,7 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
           // Broad Jumps
           React.createElement('div', { key: 'jumps' }, [
             React.createElement('label', { key: 'label', style: { fontWeight: '600', marginBottom: '0.5rem', display: 'block' } }, 
-              'Broad Jumps (cm)'),
+              'Broad Jumps (mm)'),
             React.createElement('div', { className: 'grid-2', key: 'grid' }, [
               React.createElement('input', {
                 key: 'leftSingle',
@@ -1223,7 +1223,7 @@ const HistoryView = ({ players, sessions, matrixSessions = [] }) => {
               React.createElement('div', { className: 'detail-grid', key: 'details' }, [
                 // Broad Jumps
                 React.createElement('div', { className: 'detail-section', key: 'jumps' }, [
-                  React.createElement('p', { className: 'detail-title', key: 'title' }, 'Broad Jumps (cm)'),
+                  React.createElement('p', { className: 'detail-title', key: 'title' }, 'Broad Jumps (mm)'),
                   React.createElement('div', { style: { marginTop: '0.5rem' }, key: 'values' }, [
                     React.createElement('p', { key: 'ls' }, `L Single: ${session.broadJumps.leftSingle || '-'}`),
                     React.createElement('p', { key: 'rs' }, `R Single: ${session.broadJumps.rightSingle || '-'}`),
@@ -1714,7 +1714,7 @@ const JumpChart = ({ chartData }) => {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Distance (cm)'
+          text: 'Distance (mm)'
         }
       },
       x: {
@@ -1824,7 +1824,7 @@ const TripleJumpChart = ({ chartData }) => {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Distance (cm)'
+          text: 'Distance (mm)'
         }
       },
       x: {
@@ -2694,7 +2694,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestLeftJump.value + ' cm'),
+          }, insights.personalBests.bestLeftJump.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 
@@ -2734,7 +2734,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestRightJump.value + ' cm'),
+          }, insights.personalBests.bestRightJump.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 
@@ -2774,7 +2774,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestDoubleJump.value + ' cm'),
+          }, insights.personalBests.bestDoubleJump.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 
@@ -2814,7 +2814,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestLeftTriple.value + ' cm'),
+          }, insights.personalBests.bestLeftTriple.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 
@@ -2854,7 +2854,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestRightTriple.value + ' cm'),
+          }, insights.personalBests.bestRightTriple.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 
@@ -2894,7 +2894,7 @@ const matrixChartData = React.useMemo(() => {
               fontFamily: 'monospace', 
               marginTop: '0.25rem' 
             } 
-          }, insights.personalBests.bestDoubleTriple.value + ' cm'),
+          }, insights.personalBests.bestDoubleTriple.value + ' mm'),
           React.createElement('p', { 
             key: 'date', 
             style: { 

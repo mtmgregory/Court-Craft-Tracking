@@ -19,7 +19,7 @@
     broadJump: {
       min: 1500,
       max: 9000,
-      errorMsg: 'Broad jump distance must be between 1500cm and 10000cm'
+      errorMsg: 'Broad jump distance must be between 1500mm and 9000mm'
     },
     sprint: {
       min: 0,
@@ -582,7 +582,7 @@ addMatrixSession: async function(sessionData) {
     // Sport-specific benchmark standards
     benchmarks: {
       runTime: { elite: 420, good: 450, average: 480, poor: 540 },
-      broadJump: { elite: 260, good: 240, average: 220, poor: 200 },
+      broadJump: { elite: 2400, good: 2000, average: 1800, poor: 1600 },
       sprint: { elite: 32, good: 28, average: 24, poor: 20 },
       jumpBalance: { elite: 95, good: 90, average: 85, poor: 75 },
       fatigue: { elite: -5, good: -10, average: -15, poor: -20 }

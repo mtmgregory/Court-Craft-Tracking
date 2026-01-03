@@ -82,7 +82,7 @@ const PerformanceAlerts = ({ players, sessions, matrixSessions = [] }) => {
               player: player.name,
               playerId: player.id,
               metric: 'Jump Balance',
-              message: `${stronger.toUpperCase()} leg ${diff}cm stronger than ${weaker} (${balance.toFixed(0)}% balance)`,
+              message: `${stronger.toUpperCase()} leg ${diff}mm stronger than ${weaker} (${balance.toFixed(0)}% balance)`,
               date: latest.date
             });
           }
@@ -135,7 +135,7 @@ const PerformanceAlerts = ({ players, sessions, matrixSessions = [] }) => {
                 player: player.name,
                 playerId: player.id,
                 metric: jumpLabels[jumpType],
-                message: `New PB! ${latestJump}cm (+${improvement.toFixed(1)}%)`,
+                message: `New PB! ${latestJump}mm (+${improvement.toFixed(1)}%)`,
                 date: latest.date
               });
             }

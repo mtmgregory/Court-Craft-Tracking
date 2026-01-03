@@ -513,32 +513,32 @@ const PersonalBestsLeaderboard = ({ players, sessions }) => {
       leftSingle: createLeaderboard(
         'leftSingle',
         (bests) => bests.bestLeftJump?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       rightSingle: createLeaderboard(
         'rightSingle',
         (bests) => bests.bestRightJump?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       doubleSingle: createLeaderboard(
         'doubleSingle',
         (bests) => bests.bestDoubleJump?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       leftTriple: createLeaderboard(
         'leftTriple',
         (bests) => bests.bestLeftTriple?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       rightTriple: createLeaderboard(
         'rightTriple',
         (bests) => bests.bestRightTriple?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       doubleTriple: createLeaderboard(
         'doubleTriple',
         (bests) => bests.bestDoubleTriple?.value,
-        (value) => value ? value + ' cm' : 'N/A'
+        (value) => value ? value + ' mm' : 'N/A'
       ),
       sprint: createLeaderboard(
         'sprint',

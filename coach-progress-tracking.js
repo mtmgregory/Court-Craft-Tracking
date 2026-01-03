@@ -37,7 +37,7 @@ const ProgressTracking = ({ players, sessions, matrixSessions = [] }) => {
       const avg = jumps.reduce((a, b) => a + b, 0) / jumps.length;
       return { 
         value: avg, 
-        formatted: Math.round(avg) + ' cm',
+        formatted: Math.round(avg) + ' mm',
         trend: 'higher' // Higher is better
       };
     }
