@@ -17,9 +17,9 @@
       errorMsg: 'Run time must be in MM:SS format between 04:00 and 15:00'
     },
     broadJump: {
-      min: 50,
-      max: 500,
-      errorMsg: 'Broad jump distance must be between 50cm and 500cm'
+      min: 1500,
+      max: 10000,
+      errorMsg: 'Broad jump distance must be between 1500cm and 10000cm'
     },
     sprint: {
       min: 0,
