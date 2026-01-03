@@ -19,8 +19,8 @@ service cloud.firestore {
     
     function isValidBroadJump(value) {
       return value is number 
-        && value >= 0 
-        && value <= 500;
+        && value >= 1500 
+        && value <= 10000;
     }
     
     function isValidSprint(value) {

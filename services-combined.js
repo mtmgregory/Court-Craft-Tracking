@@ -18,7 +18,7 @@
     },
     broadJump: {
       min: 1500,
-      max: 10000,
+      max: 9000,
       errorMsg: 'Broad jump distance must be between 1500cm and 10000cm'
     },
     sprint: {
